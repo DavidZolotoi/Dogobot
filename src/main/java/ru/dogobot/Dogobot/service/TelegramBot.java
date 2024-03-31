@@ -1,12 +1,14 @@
 package ru.dogobot.Dogobot.service;
 
-
 import com.vdurmont.emoji.EmojiParser;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
+import org.telegram.telegrambots.meta.api.objects.commands.scope.BotCommandScopeDefault;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
@@ -18,14 +20,22 @@ import java.util.List;
 @Slf4j
 @Component
 public class TelegramBot extends TelegramLongPollingBot {
-
     final BotConfig config;
 
     public TelegramBot(BotConfig config) {
-        System.out.println(config.getBotName());
-        System.out.println(config.getToken());
-        System.out.println(config.getOwnerId());
         this.config = config;
+        //ДОБАВЛЕНИЕ КОМАНД В МЕНЮ
+        List<BotCommand> listofCommands = new ArrayList<>();
+        listofCommands.add(new BotCommand("/start", "get a welcome message"));
+        listofCommands.add(new BotCommand("/mydata", "get your data stored"));
+        listofCommands.add(new BotCommand("/deletedata", "delete my data"));
+        listofCommands.add(new BotCommand("/help", "info how to use this bot"));
+        listofCommands.add(new BotCommand("/settings", "set your preferences"));
+        try {
+            this.execute(new SetMyCommands(listofCommands, new BotCommandScopeDefault(), null));
+        } catch (TelegramApiException e) {
+            log.error("Error setting bot's command list: " + e.getMessage());
+        }
     }
 
     @Override
@@ -38,6 +48,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         return config.getToken();
     }
 
+    //ЛОГИКА ОБРАБОТКИ СООБЩЕНИЯ
     @Override
     public void onUpdateReceived(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
@@ -46,20 +57,20 @@ public class TelegramBot extends TelegramLongPollingBot {
 
             switch (messageText) {
                     case "/start":
-                        System.out.println("Принято сообщение: " + messageText);
                         startCommandReceived(chatId, update.getMessage().getChat().getFirstName());
+                        prepareAndSendMessage(chatId, "Прислано " + messageText);
                         break;
 
                     case "/help":
-                        System.out.println("Принято сообщение: " + messageText);
+                        prepareAndSendMessage(chatId, "Прислано " + messageText);
                         break;
 
                     case "/register":
-                        System.out.println("Принято сообщение: " + messageText);
+                        prepareAndSendMessage(chatId, "Прислано " + messageText);
                         break;
 
                     default:
-                        System.out.println("Принято не сообщение: ");
+                        prepareAndSendMessage(chatId, "Прислано " + messageText);
                         break;
             }
         } else if (update.hasCallbackQuery()) {
@@ -67,7 +78,9 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 
+
     private void startCommandReceived(long chatId, String name) {
+        //ИСПОЛЬЗОВАНИЕ СМАЙЛОВ
         String answer = EmojiParser.parseToUnicode("Hi, " + name + ", nice to meet you!" + " :blush:");
         log.info("Replied to user " + name);
         sendMessage(chatId, answer);
@@ -78,6 +91,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         message.setChatId(String.valueOf(chatId));
         message.setText(textToSend);
 
+        //ВИРТУАЛЬНАЯ КЛАВИАТУРА
         ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
         List<KeyboardRow> keyboardRows = new ArrayList<>();
 
@@ -93,12 +107,17 @@ public class TelegramBot extends TelegramLongPollingBot {
         keyboardRows.add(row);
 
         keyboardMarkup.setKeyboard(keyboardRows);
-
         message.setReplyMarkup(keyboardMarkup);
 
         executeMessage(message);
     }
 
+    private void prepareAndSendMessage(long chatId, String textToSend){
+        SendMessage message = new SendMessage();
+        message.setChatId(String.valueOf(chatId));
+        message.setText(textToSend);
+        executeMessage(message);
+    }
     private void executeMessage(SendMessage message){
         try {
             execute(message);
@@ -106,5 +125,4 @@ public class TelegramBot extends TelegramLongPollingBot {
             log.error("ERROR_TEXT " + e.getMessage());
         }
     }
-
 }

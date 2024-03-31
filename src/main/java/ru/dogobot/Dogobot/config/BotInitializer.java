@@ -14,7 +14,6 @@ import ru.dogobot.Dogobot.service.TelegramBot;
 @Slf4j
 @Component
 public class BotInitializer {
-
     @Autowired
     TelegramBot bot;
 

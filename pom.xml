@@ -57,6 +57,7 @@
 							<artifactId>lombok</artifactId>
 						</exclude>
 					</excludes>
+					<executable>true</executable>	<!-- Чтоб jar в target стал исполняемым -->
 				</configuration>
 			</plugin>
 		</plugins>

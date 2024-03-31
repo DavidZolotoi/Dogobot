@@ -1,5 +1,8 @@
 package ru.dogobot.Dogobot.config;
 
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
@@ -11,18 +14,11 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @Component
 public class JsonData {
-
-    private String filePath = "../.hidden/.hidden";
-
+    @Getter @Setter
     private Map<String, String> settings;
-    protected Map<String, String> getSettings() {
-        return settings;
-    }
-    protected void setSettings(Map<String, String> settings) {
-        this.settings = settings;
-    }
 
     /**
      * Проверить существование статического словаря настроек и ключей в нём.
@@ -37,7 +33,7 @@ public class JsonData {
         if (mapForUpdate == null) mapForUpdate = new HashMap<>();
         for (var jsonKey:jsonKeys) {
             if (!mapForUpdate.containsKey(jsonKey))
-                mapForUpdate.put(jsonKey, readJSONFile(filePath, jsonKey));
+                updateJsonRow(mapForUpdate, filePath, jsonKey);
         }
         return mapForUpdate;
     }
@@ -46,17 +42,34 @@ public class JsonData {
      * Проверить существование статического словаря настроек и ключей в нём.
      * Если словаря нет, то создать.
      * Если ключей в словаре нет, то добавить, прочитав их значения из файла.
+     * @param filePath путь к файлу, в котором хранятся ключи и значения для словаря
      * @param jsonKeys ключи, которые необходимо проверить или добавить
      * @return Проверенный и дополненный в случае необходимости словарь.
      * //todo Подумать как вместо дублирования просто вызывать перегруженный метод
      */
-    protected Map<String, String> updateSettings(String... jsonKeys) {
+    protected Map<String, String> updateSettings(String filePath, String... jsonKeys) {
         if (settings == null) settings = new HashMap<>();
         for (var jsonKey:jsonKeys) {
             if (!settings.containsKey(jsonKey))
-                settings.put(jsonKey, readJSONFile(filePath, jsonKey));
+                updateJsonRow(settings, filePath, jsonKey);
         }
         return settings;
+    }
+
+    /**
+     * Добавить ключ-значение в словарь (1 строка из JSON-файла)
+     * Вынесено в отдельный метод, потому что есть повторный вызов, происходит обработка ошибок и логирование
+     * @param settingsMap словарь
+     * @param filePath путь к файлу JSON
+     * @param jsonKey ключ
+     */
+    private void updateJsonRow(Map<String, String> settingsMap, String filePath, String jsonKey) {
+        try{
+            settingsMap.put(jsonKey, readJSONFile(filePath, jsonKey));
+        }
+        catch (Exception e) {
+            log.error("Не получается добавить ключ: " + jsonKey + " в словарь." + System.lineSeparator() + e.getMessage());
+        }
     }
 
     /**
@@ -73,14 +86,11 @@ public class JsonData {
             JSONObject jsonObject = new JSONObject(tokener);
             jsonValue = jsonObject.getString(jsonKey);
         } catch (FileNotFoundException e) {
-            //log.problem("Файл не найден: ", filePath);
-            e.printStackTrace();
+            log.error("Файл не найден: " + filePath + System.lineSeparator() + e.getMessage());
         } catch (JSONException e) {
-            //log.problem("Ошибка при распознавании JSON. Ключ: ", jsonKey);
-            e.printStackTrace();
+            log.error("Ошибка при распознавании JSON. Ключ: " + jsonKey + System.lineSeparator() + e.getMessage());
         } catch (IOException e) {
-            //log.problem("Проблема с вводом-выводом при чтении файла: ", filePath);
-            e.printStackTrace();
+            log.error("Проблема с вводом-выводом при чтении файла: " + filePath + System.lineSeparator() + e.getMessage());
         }
         return jsonValue;
     }
