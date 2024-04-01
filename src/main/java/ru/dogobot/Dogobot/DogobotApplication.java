@@ -9,7 +9,13 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class DogobotApplication {
 
 	public static void main(String[] args) {
-		log.info("############################ START ############################");
+		log.info(
+				System.lineSeparator() + System.lineSeparator()
+				+ "###############################################################" + System.lineSeparator()
+				+ "############################ START ############################" + System.lineSeparator()
+				+ "###############################################################"
+				+ System.lineSeparator()
+		);
 		SpringApplication.run(DogobotApplication.class, args);
 	}
 

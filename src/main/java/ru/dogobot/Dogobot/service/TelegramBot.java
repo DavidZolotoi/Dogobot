@@ -1,13 +1,17 @@
 package ru.dogobot.Dogobot.service;
 
 import com.vdurmont.emoji.EmojiParser;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
+import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
@@ -21,96 +25,186 @@ import ru.dogobot.Dogobot.config.BotConfig;
 import ru.dogobot.Dogobot.model.User;
 import ru.dogobot.Dogobot.model.UserRepository;
 
+import java.io.File;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 @Slf4j
 @Component
 public class TelegramBot extends TelegramLongPollingBot {
-    final BotConfig config;
+    //todo посмотреть модификаторы доступа
+
+    //region КОНСТАНТЫ и другие исходные данные
+    final BotConfig botConfig;
+
+    //команды меню
+    @Getter  @AllArgsConstructor
+    public enum BotMenuEnum {
+        START("/start", "Здравствуйте!"),
+        SHOWDIR("/showdir", "Показать содержимое папки"),
+        MYDATA("/mydata", "Посмотреть данные о себе"),
+        DELETEDATA("/deletedata", "Удалить данные о себе"),
+        HELP("/help", "Помощь"),
+        SETTINGS("/settings", "Настройки");
+
+        private final String key;
+        private final String description;
+    }
+    final List<BotCommand> botMenu;
+
+    //нижняя клавиатура по умолчанию (только наименования в таблице)
+    List<List<String>> replyKeyboardNames = new ArrayList<>(Arrays.asList(
+            Arrays.asList("Домой", "Очистить чат")
+            //Arrays.asList("button3", "button4")
+    ));
+
+    //endregion
 
     @Autowired
     private UserRepository userRepository;
 
-    public TelegramBot(BotConfig config) {
-        this.config = config;
-        //ДОБАВЛЕНИЕ КОМАНД В МЕНЮ
-        List<BotCommand> listofCommands = new ArrayList<>();
-        listofCommands.add(new BotCommand("/start", "get a welcome message"));
-        listofCommands.add(new BotCommand("/mydata", "get your data stored"));
-        listofCommands.add(new BotCommand("/deletedata", "delete my data"));
-        listofCommands.add(new BotCommand("/help", "info how to use this bot"));
-        listofCommands.add(new BotCommand("/settings", "set your preferences"));
-        try {
-            this.execute(new SetMyCommands(listofCommands, new BotCommandScopeDefault(), null));
-        } catch (TelegramApiException e) {
-            log.error("Error setting bot's command list: " + e.getMessage());
+    public TelegramBot(BotConfig botConfig) {
+        this.botConfig = botConfig;
+        this.botMenu = getBotMenu();
+    }
+    /**
+     * Заполняет меню бота командами, считывая их из BotMenuEnum
+     * @return коллекцию команд
+     */
+    private List<BotCommand> getBotMenu() {
+        List<BotCommand> botMenu = new ArrayList<>();
+        for (var botCommand : BotMenuEnum.values()) {
+            botMenu.add(new BotCommand(botCommand.getKey(), botCommand.getDescription()));
         }
+        try {
+            this.execute(new SetMyCommands(botMenu, new BotCommandScopeDefault(), null));
+        } catch (TelegramApiException e) {
+            log.error("Не удалось добавить команды: " + e.getMessage());
+        }
+        return botMenu;
     }
 
     @Override
     public String getBotUsername() {
-        return config.getBotName();
+        return this.botConfig.getBotName();
     }
 
     @Override
     public String getBotToken() {
-        return config.getToken();
+        return this.botConfig.getToken();
     }
 
-    //ЛОГИКА ОБРАБОТКИ СООБЩЕНИЯ
     @Override
     public void onUpdateReceived(Update update) {
-        if (update.hasMessage() && update.getMessage().hasText()) {
-            String messageText = update.getMessage().getText();
-            long chatId = update.getMessage().getChatId();
+        //if (!ownerFilter(update)) return;
+        if (update.hasMessage() && update.getMessage().hasText()) {         //Если прилетел текст
+            handlerText(update);
+        } else if (update.hasCallbackQuery()) {                             //Если прилетел CallbackQuery
+            handlerCallBackQuery(update);
+        } else {
+            log.error("Не могу распознать отправленную информацию: " + update);
+        }
+    }
+    /**
+     * Фильтр для блокировки бота для всех, кроме владельца
+     * @param update объект обновления
+     * @return true - обратился владелец
+     */
+    private boolean ownerFilter(Update update) {
+        //todo переделать фильтр - не работает
+        return Objects.equals(
+                update.getMessage().getChatId(),
+                this.botConfig.getOwnerId()
+        );
+    }
 
-            switch (messageText) {
-                    case "/start":
-                        //РЕГИСТРАЦИЯ В БАЗЕ (PostgreSQL + JPA)
-                        registerUser(update.getMessage());
-                        startCommandReceived(chatId, update.getMessage().getChat().getFirstName());
-                        prepareAndSendMessage(chatId, "Прислано " + messageText);
-                        break;
+    /**
+     * Обработчик текстовых сообщений
+     * @param update объект обновления
+     */
+    private void handlerText(Update update) {
+        long chatId = update.getMessage().getChatId();
+        String messageText = update.getMessage().getText();
 
-                    case "/help":
-                        prepareAndSendMessage(chatId, "Прислано " + messageText);
-                        break;
+        if (messageText.equals(BotMenuEnum.START.getKey())) {
+            commandStartHandler(update);
 
-                    case "/register":
-                        prepareAndSendMessage(chatId, "Прислано " + messageText);
-                        //ИСПОЛЬЗОВАНИЕ Inline-кнопок
-                        register(chatId);
-                        break;
+        } else if (messageText.equals(BotMenuEnum.SHOWDIR.getKey())) {
+            commandShowdirHandler(update);
 
-                    default:
-                        prepareAndSendMessage(chatId, "Прислано " + messageText);
-                        break;
-            }
-        } else if (update.hasCallbackQuery()) {
-            String callbackData = update.getCallbackQuery().getData();
-            long messageId = update.getCallbackQuery().getMessage().getMessageId();
-            long chatId = update.getCallbackQuery().getMessage().getChatId();
+        } else if (messageText.equals(BotMenuEnum.MYDATA.getKey())) {
+            sendMessageWithoutKeyboard(chatId, "Запрошены данные о себе");
 
-            if(callbackData.equals("YES_BUTTON")){
-                String text = "You pressed YES button";
-                executeEditMessageText(text, chatId, messageId);
-            }
-            else if(callbackData.equals("NO_BUTTON")){
-                String text = "You pressed NO button";
-                executeEditMessageText(text, chatId, messageId);
-            }
+        } else if (messageText.equals(BotMenuEnum.DELETEDATA.getKey())) {
+            sendMessageWithoutKeyboard(chatId, "Запрошено удаление данных о себе");
+
+        } else {
+            sendMessageWithoutKeyboard(chatId, "Прислано " + messageText);
         }
     }
 
-    private void registerUser(Message msg) {
-        if(userRepository.findById(msg.getChatId()).isEmpty()){
+    /**
+     * Обработчик CallbackQuery
+     * @param update объект обновления
+     */
+    private void handlerCallBackQuery(Update update) {
+        String callbackData = update.getCallbackQuery().getData();
+        long messageId = update.getCallbackQuery().getMessage().getMessageId();
+        long chatId = update.getCallbackQuery().getMessage().getChatId();
+
+        if(callbackData.equals("YesCD")){
+            String text = "You pressed YES button";
+            editMessageWithoutKeyboard(chatId, messageId, text);
+
+            //todo начальные эксперименты с движением по файловой системе
+            List<String> fileNames = new ArrayList<>();
+            // Получаем домашнюю папку пользователя
+            String homeDirectory = System.getProperty("user.home") + "/forTest";
+            // Создаем объект File для представления домашней папки
+            File folder = new File(homeDirectory);
+            // Получаем список файлов в папке
+            File[] files = folder.listFiles();
+            // Получаем имена файлов на экран
+            for(File file : files) {
+                fileNames.add(file.getName());
+            }
+            sendMessageWithoutKeyboard(chatId, fileNames.toString());
+        }
+        else if(callbackData.equals("NoCD")){
+            String text = "You pressed NO button";
+            editMessageWithoutKeyboard(chatId, messageId, text);
+        }
+        else {
+            log.error("Не распознал callbackData: " + callbackData);
+        }
+    }
+
+    /**
+     * Обработчик команды /start
+     * @param update объект обновления
+     */
+    private void commandStartHandler(Update update) {
+        long chatId = update.getMessage().getChatId();
+        String name = update.getMessage().getChat().getFirstName();
+        String answer = EmojiParser.parseToUnicode("Hi, " + name + ", nice to meet you!" + " :blush:");
+        registerUser(update.getMessage());
+        log.info("Replied to user " + name);
+        sendMessageWithReplyKeyboard(chatId, answer);
+    }
+    /**
+     * Метод для регистрации пользователя
+     * @param message сообщение
+     */
+    private void registerUser(Message message) {
+        if(userRepository.findById(message.getChatId()).isEmpty()){
             User user = new User();
-            user.setChatId(msg.getChatId());
-            user.setFirstName(msg.getChat().getFirstName());
-            user.setLastName(msg.getChat().getLastName());
-            user.setUserName(msg.getChat().getUserName());
+            user.setChatId(message.getChatId());
+            user.setFirstName(message.getChat().getFirstName());
+            user.setLastName(message.getChat().getLastName());
+            user.setUserName(message.getChat().getUserName());
             user.setRegisteredAt(new Timestamp(System.currentTimeMillis()));
 
             userRepository.save(user);
@@ -118,84 +212,81 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    private void startCommandReceived(long chatId, String name) {
-        //ИСПОЛЬЗОВАНИЕ СМАЙЛОВ
-        String answer = EmojiParser.parseToUnicode("Hi, " + name + ", nice to meet you!" + " :blush:");
-        log.info("Replied to user " + name);
-        sendMessage(chatId, answer);
+    /**
+     * Обработчик команды /showdir
+     * @param update объект обновления
+     */
+    private void commandShowdirHandler(Update update) {
+        long chatId = update.getMessage().getChatId();
+        List<List<String>> inlineKeyboardNames = new ArrayList<>(Arrays.asList(
+                Arrays.asList("Yes", "No")
+        ));
+        sendMessageWithInlineKeyboard(chatId, "Do you really want to show directory content?", inlineKeyboardNames);
     }
 
-    private void sendMessage(long chatId, String textToSend) {
+    /**
+     * Метод для внесения изменений в чат с подготовленным сообщением (отправка или правка)
+     * @param message подготовленное сообщение
+     */
+    private void executeMessage(SendMessage message){
+        try {
+            execute(message);
+        } catch (TelegramApiException e) {
+            log.error("Не удалось внести изменения в чат (отправить/изменить): " + e.getMessage());
+        }
+    }
+
+    //1. ПРОСТАЯ ОТПРАВКА СООБЩЕНИЯ
+    private void sendMessageWithoutKeyboard(long chatId, String textMessage){
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(chatId));
-        message.setText(textToSend);
+        message.setText(textMessage);
+        executeMessage(message);
+    }
 
-        //ВИРТУАЛЬНАЯ КЛАВИАТУРА
-        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
-        List<KeyboardRow> keyboardRows = new ArrayList<>();
+    //2. ОТПРАВКА СООБЩЕНИЯ С КЛАВИАТУРОЙ
+    private void sendMessageWithReplyKeyboard(long chatId, String textMessage) {
+        SendMessage message = new SendMessage();
+        message.setChatId(String.valueOf(chatId));
+        message.setText(textMessage);
 
-        KeyboardRow row = new KeyboardRow();
-        row.add("weather");
-        row.add("get random joke");
-        keyboardRows.add(row);
-
-        row = new KeyboardRow();
-        row.add("register");
-        row.add("check my data");
-        row.add("delete my data");
-        keyboardRows.add(row);
-
-        keyboardMarkup.setKeyboard(keyboardRows);
+        ReplyKeyboardMarkup keyboardMarkup = getReplyKeyboardMarkup();
         message.setReplyMarkup(keyboardMarkup);
 
         executeMessage(message);
     }
 
-    private void prepareAndSendMessage(long chatId, String textToSend){
-        SendMessage message = new SendMessage();
-        message.setChatId(String.valueOf(chatId));
-        message.setText(textToSend);
-        executeMessage(message);
+    //3. ОТПРАВКА СООБЩЕНИЯ С ИНЛАЙН-КЛАВИАТУРОЙ
+    private void sendMessageWithInlineKeyboard(long chatId, String textMessage, List<List<String>> inlineKeyboardNames) {
+        SendMessage message = new SendMessage();                            //создали сообщение
+        message.setChatId(String.valueOf(chatId));                          //указали чат
+        message.setText(textMessage);                                       //указали текст сообщения
+        InlineKeyboardMarkup markupInLine = getInlineKeyboardMarkup(inlineKeyboardNames);
+        message.setReplyMarkup(markupInLine);                               //добавили клавиатуру к сообщению
+
+        executeMessage(message);                                            //внесли изменения в чат (отправили)
     }
-    private void executeMessage(SendMessage message){
+
+    //4. ОТПРАВКА ФАЙЛА
+    /**
+     * Метод для отправки файла
+     * @param chatId Id чата
+     * @param filePath путь к файлу
+     */
+    private void sendFile(long chatId, String filePath){
+        //filePath = "/home/delllindeb/archive/myproject/Dogobot/Other/Dogobot.jpg";
         try {
-            execute(message);
-        } catch (TelegramApiException e) {
-            log.error("ERROR_TEXT " + e.getMessage());
+            execute(new SendDocument(String.valueOf(chatId), new InputFile(new File(filePath))));
+        } catch (TelegramApiException | NullPointerException e) {
+            log.error("Не удалось отправить файл: " + filePath + System.lineSeparator() + e.getMessage());
         }
     }
 
-    private void register(long chatId) {
-        SendMessage message = new SendMessage();                            //создали сообщение
-        message.setChatId(String.valueOf(chatId));                          //указали чат
-        message.setText("Do you really want to register?");                 //указали текст сообщения
-
-        InlineKeyboardMarkup markupInLine = new InlineKeyboardMarkup();
-        List<List<InlineKeyboardButton>> rowsInLine = new ArrayList<>();
-        List<InlineKeyboardButton> rowInLine = new ArrayList<>();
-
-        var yesButton = new InlineKeyboardButton();
-        yesButton.setText("Yes");
-        yesButton.setCallbackData("YES_BUTTON");
-
-        var noButton = new InlineKeyboardButton();
-        noButton.setText("No");
-        noButton.setCallbackData("NO_BUTTON");
-
-        rowInLine.add(yesButton);                                           //добавили 1ю кнопку в ряд
-        rowInLine.add(noButton);                                            //добавили 2ю кнопку в ряд
-        rowsInLine.add(rowInLine);                                          //добавили ряд кнопок в ряды
-        markupInLine.setKeyboard(rowsInLine);                               //добавили ряды в клавиатуру
-        message.setReplyMarkup(markupInLine);                               //добавили клавиатуру к сообщению
-
-        executeMessage(message);                                            //отправили сообщение
-    }
-
-    private void executeEditMessageText(String text, long chatId, long messageId){
-        //ИЗМЕНЕНИЕ УЖЕ ОТПРАВЛЕННОГО СООБЩЕНИЯ
+    //5. ИЗМЕНЕНИЕ УЖЕ ОТПРАВЛЕННОГО СООБЩЕНИЯ
+    private void editMessageWithoutKeyboard(long chatId, long messageId, String textMessage){
         EditMessageText message = new EditMessageText();
         message.setChatId(String.valueOf(chatId));
-        message.setText(text);
+        message.setText(textMessage);
         message.setMessageId((int) messageId);
 
         try {
@@ -204,4 +295,56 @@ public class TelegramBot extends TelegramLongPollingBot {
             log.error("ERROR_TEXT" + e.getMessage());
         }
     }
+
+    //СОЗДАНИЕ И ВОЗВРАТ Inline-КЛАВИАТУРЫ
+    /**
+     * Метод создания и возврата Inline-клавиатуры
+     * @param inlineKeyboardNames названия кнопок
+     * @return Inline-клавиатура
+     */
+    private InlineKeyboardMarkup getInlineKeyboardMarkup(List<List<String>> inlineKeyboardNames) {
+        InlineKeyboardMarkup iKeyboard = new InlineKeyboardMarkup();        //сама клава
+        List<List<InlineKeyboardButton>> iRows = new ArrayList<>();         //строки кнопок
+        for (var inlineKeyboardNamesRow : inlineKeyboardNames) {
+            List<InlineKeyboardButton> iRow = new ArrayList<>();            //строка кнопок
+            for(var iName : inlineKeyboardNamesRow){
+                InlineKeyboardButton iButton = new InlineKeyboardButton();  //кнопки
+                iButton.setText(iName);                                     //дали названия кнопкам
+                iButton.setCallbackData(iName+"CD");                        //дали коллбэки кнопкам
+                iRow.add(iButton);                                          //добавили кнопки в ряд
+            }
+            iRows.add(iRow);                                                //добавили ряд в ряды кнопок
+        }
+        iKeyboard.setKeyboard(iRows);                                       //добавили ряды в клавиатуру
+        return iKeyboard;
+    }
+
+    /**
+     * Метод создания и возврата Reply-клавиатуры по умолчанию
+     * @return Reply-клавиатура
+     */
+    private ReplyKeyboardMarkup getReplyKeyboardMarkup() {
+        return getReplyKeyboardMarkup(this.replyKeyboardNames);
+    }
+    /**
+     * Метод создания и возврата Reply-клавиатуры
+     * @param replyKeyboardNames названия кнопок
+     * @return Reply-клавиатура
+     */
+    private ReplyKeyboardMarkup getReplyKeyboardMarkup(List<List<String>> replyKeyboardNames) {
+        ReplyKeyboardMarkup rKeyboard = new ReplyKeyboardMarkup();
+        List<KeyboardRow> rRows = new ArrayList<>();
+        for (var replyKeyboardNamesRow : replyKeyboardNames) {
+            KeyboardRow rRow = new KeyboardRow();
+            for (var rName : replyKeyboardNamesRow) {
+                rRow.add(rName);
+            }
+            rRows.add(rRow);
+        }
+        rKeyboard.setKeyboard(rRows);
+        //rKeyboard.setOneTimeKeyboard(true);
+        rKeyboard.setResizeKeyboard(true);
+        return rKeyboard;
+    }
+
 }
