@@ -2,10 +2,12 @@ package ru.dogobot.Dogobot.service;
 
 import com.vdurmont.emoji.EmojiParser;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
 import org.telegram.telegrambots.meta.api.objects.commands.scope.BotCommandScopeDefault;
@@ -13,7 +15,10 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMar
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import ru.dogobot.Dogobot.config.BotConfig;
+import ru.dogobot.Dogobot.model.User;
+import ru.dogobot.Dogobot.model.UserRepository;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,6 +26,9 @@ import java.util.List;
 @Component
 public class TelegramBot extends TelegramLongPollingBot {
     final BotConfig config;
+
+    @Autowired
+    private UserRepository userRepository;
 
     public TelegramBot(BotConfig config) {
         this.config = config;
@@ -57,6 +65,8 @@ public class TelegramBot extends TelegramLongPollingBot {
 
             switch (messageText) {
                     case "/start":
+                        //РЕГИСТРАЦИЯ В БАЗЕ (PostgreSQL + JPA)
+                        registerUser(update.getMessage());
                         startCommandReceived(chatId, update.getMessage().getChat().getFirstName());
                         prepareAndSendMessage(chatId, "Прислано " + messageText);
                         break;
@@ -78,6 +88,19 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 
+    private void registerUser(Message msg) {
+        if(userRepository.findById(msg.getChatId()).isEmpty()){
+            User user = new User();
+            user.setChatId(msg.getChatId());
+            user.setFirstName(msg.getChat().getFirstName());
+            user.setLastName(msg.getChat().getLastName());
+            user.setUserName(msg.getChat().getUserName());
+            user.setRegisteredAt(new Timestamp(System.currentTimeMillis()));
+
+            userRepository.save(user);
+            log.info("user saved: " + user);
+        }
+    }
 
     private void startCommandReceived(long chatId, String name) {
         //ИСПОЛЬЗОВАНИЕ СМАЙЛОВ
