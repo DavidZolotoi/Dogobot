@@ -7,11 +7,14 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
 import org.telegram.telegrambots.meta.api.objects.commands.scope.BotCommandScopeDefault;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import ru.dogobot.Dogobot.config.BotConfig;
@@ -77,6 +80,8 @@ public class TelegramBot extends TelegramLongPollingBot {
 
                     case "/register":
                         prepareAndSendMessage(chatId, "Прислано " + messageText);
+                        //ИСПОЛЬЗОВАНИЕ Inline-кнопок
+                        register(chatId);
                         break;
 
                     default:
@@ -84,7 +89,18 @@ public class TelegramBot extends TelegramLongPollingBot {
                         break;
             }
         } else if (update.hasCallbackQuery()) {
+            String callbackData = update.getCallbackQuery().getData();
+            long messageId = update.getCallbackQuery().getMessage().getMessageId();
+            long chatId = update.getCallbackQuery().getMessage().getChatId();
 
+            if(callbackData.equals("YES_BUTTON")){
+                String text = "You pressed YES button";
+                executeEditMessageText(text, chatId, messageId);
+            }
+            else if(callbackData.equals("NO_BUTTON")){
+                String text = "You pressed NO button";
+                executeEditMessageText(text, chatId, messageId);
+            }
         }
     }
 
@@ -146,6 +162,46 @@ public class TelegramBot extends TelegramLongPollingBot {
             execute(message);
         } catch (TelegramApiException e) {
             log.error("ERROR_TEXT " + e.getMessage());
+        }
+    }
+
+    private void register(long chatId) {
+        SendMessage message = new SendMessage();                            //создали сообщение
+        message.setChatId(String.valueOf(chatId));                          //указали чат
+        message.setText("Do you really want to register?");                 //указали текст сообщения
+
+        InlineKeyboardMarkup markupInLine = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> rowsInLine = new ArrayList<>();
+        List<InlineKeyboardButton> rowInLine = new ArrayList<>();
+
+        var yesButton = new InlineKeyboardButton();
+        yesButton.setText("Yes");
+        yesButton.setCallbackData("YES_BUTTON");
+
+        var noButton = new InlineKeyboardButton();
+        noButton.setText("No");
+        noButton.setCallbackData("NO_BUTTON");
+
+        rowInLine.add(yesButton);                                           //добавили 1ю кнопку в ряд
+        rowInLine.add(noButton);                                            //добавили 2ю кнопку в ряд
+        rowsInLine.add(rowInLine);                                          //добавили ряд кнопок в ряды
+        markupInLine.setKeyboard(rowsInLine);                               //добавили ряды в клавиатуру
+        message.setReplyMarkup(markupInLine);                               //добавили клавиатуру к сообщению
+
+        executeMessage(message);                                            //отправили сообщение
+    }
+
+    private void executeEditMessageText(String text, long chatId, long messageId){
+        //ИЗМЕНЕНИЕ УЖЕ ОТПРАВЛЕННОГО СООБЩЕНИЯ
+        EditMessageText message = new EditMessageText();
+        message.setChatId(String.valueOf(chatId));
+        message.setText(text);
+        message.setMessageId((int) messageId);
+
+        try {
+            execute(message);
+        } catch (TelegramApiException e) {
+            log.error("ERROR_TEXT" + e.getMessage());
         }
     }
 }
