@@ -16,7 +16,6 @@
 	<properties>
 		<java.version>17</java.version>
 		<telegram.version>6.8.0</telegram.version>
-		<postgresql.version>42.7.2</postgresql.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -41,7 +40,7 @@
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
-			<version>${postgresql.version}</version>
+			<scope>runtime</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

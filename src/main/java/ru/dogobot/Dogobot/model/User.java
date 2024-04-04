@@ -8,7 +8,7 @@ import lombok.*;
 
 import java.sql.Timestamp;
 
-@Getter @Setter
+@Data
 @Entity
 @Table(name = "usersDataTable")
 public class User {
@@ -23,15 +23,4 @@ public class User {
     private String userName;
     @Column(name = "registered_at")
     private Timestamp registeredAt;
-
-    @Override
-    public String toString() {
-        return "User{" +
-                "chatId=" + chatId +
-                ", firstName='" + firstName + '\'' +
-                ", lastName='" + lastName + '\'' +
-                ", userName='" + userName + '\'' +
-                ", registeredAt=" + registeredAt +
-                '}';
-    }
 }

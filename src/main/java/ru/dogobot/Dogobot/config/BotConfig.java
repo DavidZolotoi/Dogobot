@@ -11,7 +11,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 @Data
 public class BotConfig {
-    final String filePath = "../.hidden/.hidden";
+//    final String filePath = "../.hidden/.hidden";
+    final String filePath = "/home/delllindeb/archive/myproject/Dogobot/.hidden/.hidden";
     String botName;
     String token;
     Long ownerId;
