@@ -45,6 +45,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     public enum BotMenuEnum {
         START(      "/start",       "Здравствуйте!"),
         SHOWDIR(    "/showdir",     "Показать содержимое папки"),   //todo переименовать. Варианты: "поехали","действия","home"...
+        SCREENSHOT( "/screenshot",  "Сделать скриншот"),
         MYDATA(     "/mydata",      "Посмотреть данные о себе"),
         DELETEDATA( "/deletedata",  "Удалить данные о себе"),
         HELP(       "/help",        "Помощь"),
@@ -63,6 +64,8 @@ public class TelegramBot extends TelegramLongPollingBot {
     ));
 
     //endregion
+
+    //region AUTOWIRED and CONSTRUCTORS
 
     @Autowired
     private UserRepository userRepository;
@@ -93,6 +96,8 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
         return botMenu;
     }
+
+    //endregion
 
     @Override
     public String getBotUsername() {
@@ -145,6 +150,9 @@ public class TelegramBot extends TelegramLongPollingBot {
         } else if (messageText.equals(BotMenuEnum.SHOWDIR.getKey())) {
             commandShowdirHandler(update);
 
+        } else if (messageText.equals(BotMenuEnum.SCREENSHOT.getKey())) {
+            commandScreenshotHandler(update);
+
         } else if (messageText.equals(BotMenuEnum.MYDATA.getKey())) {
             commandMydataHandler(update);
 
@@ -168,22 +176,25 @@ public class TelegramBot extends TelegramLongPollingBot {
         long messageId = update.getCallbackQuery().getMessage().getMessageId();
         long chatId = update.getCallbackQuery().getMessage().getChatId();
 
-        if(callbackData.equals("YesCD")){
+        if (fileManager.getCurrentPathDict().containsKey(callbackData)){
+            FileDir targetFileDir = fileManager.getCurrentPathDict().get(callbackData);
+            targetFileDir = fileManager.getFileDirWithScan(targetFileDir.getFdPath());
+            //todo добавить текста к клавиатуре - текущий путь
+            sendMessageWithInlineKeyboard(chatId, String.valueOf(messageId), targetFileDir);
+        }
+        else if(callbackData.equals("YesCD")){
             String text = "You pressed YES button";
             editMessageWithoutKeyboard(chatId, messageId, text);
-
-            //сделать скриншот экрана
-            String screenPath = screenshoter.take();
-            sendFile(chatId, screenPath);
-
         }
         else if(callbackData.equals("NoCD")){
             String text = "You pressed NO button";
             editMessageWithoutKeyboard(chatId, messageId, text);
         }
         else {
-            log.error("Не распознал callbackData: " + callbackData);
+            log.error("Не могу распознать нажатую кнопку: " + callbackData);
         }
+
+
     }
 
     //endregion
@@ -235,7 +246,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         List<List<String>> inlineKeyboardNames = new ArrayList<>(Arrays.asList(
                 Arrays.asList("Yes", "No")
         ));
-        sendMessageWithInlineKeyboard(chatId, "Do you really want to show directory content?", inlineKeyboardNames);
+        //sendMessageWithInlineKeyboard(chatId, "Do you really want to show directory content?", inlineKeyboardNames);
 
         //показать содержимое папки "home"
         //=> запуск бесконечного метода движения по папкам,
@@ -246,9 +257,15 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     private void showPath(long chatId, String nextPath) {
         nextPath = nextPath + "/forTest";   //todo УБРАТЬ ЭТО!!!
-        FileDir nextFileDir = fileManager.getFileDir(nextPath);
+        FileDir nextFileDir = fileManager.getFileDirWithScan(nextPath);
         //todo подумать над тем, чтоб преобразить отображение текущей папки d0 как-то по другому
-        sendMessageWithInlineKeyboard(chatId, nextPath, nextFileDir.getFdInlineKeyboardNames());
+        sendMessageWithInlineKeyboard(chatId, nextPath, nextFileDir);
+    }
+
+    private void commandScreenshotHandler(Update update) {
+        //сделать скриншот экрана
+        String screenPath = screenshoter.take();
+        sendFile(update.getMessage().getChatId(), screenPath);
     }
 
     private void commandMydataHandler(Update update) {
@@ -327,13 +344,13 @@ public class TelegramBot extends TelegramLongPollingBot {
      * Метод для отправки текстового сообщения с вызовом Inline-клавиатуры
      * @param chatId Id чата получателя
      * @param textMessage текстовое сообщение
-     * @param inlineKeyboardNames таблица из строковых наименований кнопок инлайн-клавиатуры
+     * @param fileDir элемент файловой системы, содержащий информацию для создания клавиатуры (названия кнопок, команды и т.п.)
      */
-    private void sendMessageWithInlineKeyboard(long chatId, String textMessage, List<List<String>> inlineKeyboardNames) {
+    private void sendMessageWithInlineKeyboard(long chatId, String textMessage, FileDir fileDir) {
         SendMessage message = new SendMessage();                            //создали сообщение
         message.setChatId(String.valueOf(chatId));                          //указали чат
         message.setText(textMessage);                                       //указали текст сообщения
-        InlineKeyboardMarkup markupInLine = getInlineKeyboardMarkup(inlineKeyboardNames);
+        InlineKeyboardMarkup markupInLine = getInlineKeyboardMarkup(fileDir);
         message.setReplyMarkup(markupInLine);                               //добавили клавиатуру к сообщению
 
         executeMessage(message);                                            //внесли изменения в чат (отправили)
@@ -379,24 +396,26 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     //СОЗДАНИЕ И ВОЗВРАТ Inline-КЛАВИАТУРЫ
     /**
-     * Метод создания и возврата Inline-клавиатуры
-     * @param inlineKeyboardNames названия кнопок
+     * Метод создания и возврата Inline-клавиатуры на основе переданной таблицы названий кнопок.
+     * Из недостатков - единое правило на все команды CallbackData.
+     * @param fileDir элемент файловой системы, содержащий информацию для создания клавиатуры (названия кнопок, команды и т.п.)
      * @return Inline-клавиатура
      */
-    private InlineKeyboardMarkup getInlineKeyboardMarkup(List<List<String>> inlineKeyboardNames) {
-        InlineKeyboardMarkup iKeyboard = new InlineKeyboardMarkup();        //сама клава
-        List<List<InlineKeyboardButton>> iRows = new ArrayList<>();         //строки кнопок
-        for (var inlineKeyboardNamesRow : inlineKeyboardNames) {
-            List<InlineKeyboardButton> iRow = new ArrayList<>();            //строка кнопок
-            for(var iName : inlineKeyboardNamesRow){
-                InlineKeyboardButton iButton = new InlineKeyboardButton();  //кнопки
-                iButton.setText(iName);                                     //дали названия кнопкам
-                iButton.setCallbackData(iName+"CD");                        //дали коллбэки кнопкам
-                iRow.add(iButton);                                          //добавили кнопки в ряд
+    private InlineKeyboardMarkup getInlineKeyboardMarkup(FileDir fileDir) {
+        InlineKeyboardMarkup iKeyboard = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> iRows = new ArrayList<>();
+        for (var inlineKeyboardIdsRow : fileDir.getFdInlineKeyboardIds()) {
+            List<InlineKeyboardButton> iRow = new ArrayList<>();
+            for(var inlineKeyboardId : inlineKeyboardIdsRow){
+                InlineKeyboardButton iButton = new InlineKeyboardButton();
+                FileDir fileDirInFolder = fileManager.getCurrentPathDict().get(inlineKeyboardId);
+                iButton.setText(fileDirInFolder.getFdNameInline());
+                iButton.setCallbackData(fileDirInFolder.getFdCallbackData());
+                iRow.add(iButton);
             }
-            iRows.add(iRow);                                                //добавили ряд в ряды кнопок
+            iRows.add(iRow);
         }
-        iKeyboard.setKeyboard(iRows);                                       //добавили ряды в клавиатуру
+        iKeyboard.setKeyboard(iRows);
         return iKeyboard;
     }
 
@@ -431,3 +450,28 @@ public class TelegramBot extends TelegramLongPollingBot {
     //endregion
 
 }
+
+
+////СОЗДАНИЕ И ВОЗВРАТ Inline-КЛАВИАТУРЫ
+///**
+// * Метод создания и возврата Inline-клавиатуры на основе переданной таблицы названий кнопок.
+// * Из недостатков - единое правило на все команды CallbackData.
+// * @param inlineKeyboardNames названия кнопок
+// * @return Inline-клавиатура
+// */
+//private InlineKeyboardMarkup getInlineKeyboardMarkup(List<List<String>> inlineKeyboardNames) {
+//    InlineKeyboardMarkup iKeyboard = new InlineKeyboardMarkup();        //сама клава
+//    List<List<InlineKeyboardButton>> iRows = new ArrayList<>();         //строки кнопок
+//    for (var inlineKeyboardNamesRow : inlineKeyboardNames) {
+//        List<InlineKeyboardButton> iRow = new ArrayList<>();            //строка кнопок
+//        for(var iName : inlineKeyboardNamesRow){
+//            InlineKeyboardButton iButton = new InlineKeyboardButton();  //кнопки
+//            iButton.setText(iName);                                     //дали названия кнопкам
+//            iButton.setCallbackData(iName+"CD");                        //дали коллбэки кнопкам
+//            iRow.add(iButton);                                          //добавили кнопки в ряд
+//        }
+//        iRows.add(iRow);                                                //добавили ряд в ряды кнопок
+//    }
+//    iKeyboard.setKeyboard(iRows);                                       //добавили ряды в клавиатуру
+//    return iKeyboard;
+//}

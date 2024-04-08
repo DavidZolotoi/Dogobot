@@ -8,6 +8,8 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.Random;
 
 @Slf4j
 @Component
@@ -65,9 +67,19 @@ public class Screenshoter {
     }
 
     private String getScreenPath(String screenExtension, String screenshotDirPath) {
-        // Строка, содержащая имя файла
+        String screenName = getRandomStringDate();
+        // Строка, содержащая полный путь к файлу
+        return String.format("%s/%s.%s", screenshotDirPath, screenName, screenExtension);
+    }
+
+    /**
+     * Генерирует случайную неповторимую строку на основе текущей даты.
+     * Длина строки 29 символов, что вписывается в различные требования.
+     * @return случайная неповторимая строка
+     */
+    protected static String getRandomStringDate() {
         var dateTimeNow = java.time.LocalDateTime.now();
-        String screenName = String.format("%04d%02d%02d_%02d%02d%02d_%09d.%s",
+        return String.format("%04d%02d%02d_%02d%02d%02d_%09d_r%02d",
                 dateTimeNow.getYear(),
                 dateTimeNow.getMonthValue(),
                 dateTimeNow.getDayOfMonth(),
@@ -75,9 +87,7 @@ public class Screenshoter {
                 dateTimeNow.getMinute(),
                 dateTimeNow.getSecond(),
                 dateTimeNow.getNano(),
-                screenExtension
+                new Random().nextInt(99)
         );
-        // Строка, содержащая полный путь к файлу
-        return String.format("%s/%s.%s", screenshotDirPath, screenName, screenExtension);
     }
 }

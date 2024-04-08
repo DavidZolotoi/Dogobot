@@ -1,6 +1,8 @@
 package ru.dogobot.Dogobot.model;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -11,18 +13,27 @@ import java.util.List;
 @Data
 @Component
 public class FileDir {
+    @Getter
+    @AllArgsConstructor
     public enum FDType {
-        FILE,
-        DIR;
+        FILE("f"),
+        DIR("d"),
+        OTHER("o");
+
+        private final String typeString;
     }
 
-    private File    fdObject;
-    private File[]  fdArray;
-    private List<List<String>> fdInlineKeyboardNames;
-    private String  fdPath;
+    private File    fdJavaIoFile;
     private FDType  fdType;
     private String  fdNameOriginal;
     private String  fdNameInline;
+    private String  fdId;
+    private String  fdCallbackData;
+    private String  fdPath;
     private Long    fdDate;
     private Long    fdSize;
+
+    private File[]  fdArray;
+    private List<List<String>> fdInlineKeyboardIds;
+
 }
