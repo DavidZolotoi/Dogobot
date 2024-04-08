@@ -1,6 +1,7 @@
 package ru.dogobot.Dogobot.service;
 
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -10,13 +11,16 @@ import java.io.File;
 import java.util.*;
 import java.util.stream.Stream;
 
+@Getter
 @Slf4j
 @Component
 public class FileManager {
+    final String MENU = "===[ МЕНЮ ]===";   //должно быть менее 32 символов
+    final String EXIT_DIR = "[ .. ]";       //должно быть менее 32 символов
+
     @Autowired
     private FileDir fileDir;
 
-    @Getter
     private Map<String, FileDir> currentPathDict;
 
     /**
@@ -28,7 +32,7 @@ public class FileManager {
     protected FileDir getFileDirWithScan(String inputPath) {
         //сортировка и копирование только для текущей папки!!!
         this.fileDir = getFileDirWithoutScan(inputPath);
-        return scanFileDirAndSaveItemData(fileDir);
+        return scanFileDirAndSaveItemData(this.fileDir);
     }
 
     /**
@@ -37,19 +41,28 @@ public class FileManager {
      * @param inputPath путь к элементу файловой системы
      * @return объект FileDir
      */
-    public FileDir getFileDirWithoutScan(String inputPath) {
+    protected FileDir getFileDirWithoutScan(String inputPath) {
         FileDir fileDir = new FileDir();
         fileDir.setFdJavaIoFile( new File(inputPath) );
+        fileDir.setFdId( getPropertyFdId(fileDir) );
         fileDir.setFdType( getPropertyFdType(fileDir) );
         fileDir.setFdNameOriginal( getPropertyFdNameOriginal(fileDir) );
         fileDir.setFdNameInline( getPropertyFdNameInlineButton(fileDir) );
-        fileDir.setFdId( getPropertyFdId(fileDir) );
         fileDir.setFdCallbackData( getPropertyFdCallbackData(fileDir) );
         fileDir.setFdPath( getPropertyFdAbsolutePath(fileDir) );
         fileDir.setFdDate( getPropertyFdDate(fileDir) );
         fileDir.setFdSize( getPropertyFdLength(fileDir) );
         fileDir.setFdArray( getPropertyFdSortArray(fileDir) );
         return fileDir;
+    }
+
+
+    private String getPropertyFdId(FileDir fileDir) {
+        if (fileDir.getFdId() != null) return fileDir.getFdId();
+        final String txtForFinish = "%s%s".formatted(
+                fileDir.getFdJavaIoFile().getAbsolutePath(), fileDir.getFdJavaIoFile().length()
+        );
+        return Screenshoter.getRandomStringDate(txtForFinish);
     }
 
     private FileDir.FDType getPropertyFdType(FileDir fileDir) {
@@ -70,16 +83,24 @@ public class FileManager {
      * @param fileDir элемент файловой системы
      * @return проверенное и корректное название
      */
-    public String getPropertyFdNameInlineButton(FileDir fileDir){
+    protected String getPropertyFdNameInlineButton(FileDir fileDir){
         //todo для поддержки других языков надо либо добавлять сюда,
         // либо менять на стратегию, чтоб в рег.выражении указать только запрещенные символы
         //регулярное выражение для допустимых символов (^ означает "всё, кроме")
         final String ALLOWED_CHARACTERS_REGEX = "[^a-zA-Zа-яА-Я0-9 .,:;`~'\"!?@#№$%^&*-_+=|<>(){}\\[\\]]";
+        final int MAX_LENGTH = 30; //еще 2 оставляю для квадратных скобок папок []
         String nameInlineButton = fileDir.getFdNameOriginal();
+
+        if (this.fileDir.getFdJavaIoFile() != null){
+            if (fileDir.getFdJavaIoFile().equals(this.fileDir.getFdJavaIoFile().getParentFile()))
+                return EXIT_DIR;
+            if (fileDir.getFdJavaIoFile().equals(this.fileDir.getFdJavaIoFile()))
+                return MENU;
+        }
+
         nameInlineButton = nameInlineButton.replaceAll(ALLOWED_CHARACTERS_REGEX, "");
-        int maxLength = 30; //еще 2 оставляю для квадратных скобок папок []
-        if (nameInlineButton.length() > maxLength) {
-            int charactersToRemove = nameInlineButton.length() - maxLength + 2;
+        if (nameInlineButton.length() > MAX_LENGTH) {
+            int charactersToRemove = nameInlineButton.length() - MAX_LENGTH + 2;
             int start = nameInlineButton.length() / 2 - charactersToRemove / 2;
             nameInlineButton = nameInlineButton.substring(0, start)
                     + ".."
@@ -88,12 +109,8 @@ public class FileManager {
         if (fileDir.getFdType() == FileDir.FDType.DIR){
             nameInlineButton = "[" + nameInlineButton + "]";
         }
-        //todo можно переименовать наименование текущего элемента Array[1] в "действия над f/d"
-        return nameInlineButton;
-    }
 
-    private String getPropertyFdId(FileDir fileDir) {
-        return Screenshoter.getRandomStringDate();
+        return nameInlineButton;
     }
 
     private String getPropertyFdCallbackData(FileDir fileDir) {
@@ -122,8 +139,8 @@ public class FileManager {
 
         //массив по умолчанию
         File[] dirsAndFilesWithDefault = new File[]{
-                fileByNextPath.getParentFile(),
-                fileByNextPath
+                fileByNextPath,
+                fileByNextPath.getParentFile()
         };
         if (!fileDir.getFdJavaIoFile().isDirectory())   //если файл, то на этом всё
             return dirsAndFilesWithDefault;

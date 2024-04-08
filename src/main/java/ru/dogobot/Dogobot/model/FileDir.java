@@ -24,10 +24,10 @@ public class FileDir {
     }
 
     private File    fdJavaIoFile;
+    private String  fdId;
     private FDType  fdType;
     private String  fdNameOriginal;
     private String  fdNameInline;
-    private String  fdId;
     private String  fdCallbackData;
     private String  fdPath;
     private Long    fdDate;
@@ -35,5 +35,6 @@ public class FileDir {
 
     private File[]  fdArray;
     private List<List<String>> fdInlineKeyboardIds;
+
 
 }

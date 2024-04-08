@@ -67,27 +67,25 @@ public class Screenshoter {
     }
 
     private String getScreenPath(String screenExtension, String screenshotDirPath) {
-        String screenName = getRandomStringDate();
+        String screenName = getRandomStringDate(String.valueOf(new Random().nextInt(10)));
         // Строка, содержащая полный путь к файлу
         return String.format("%s/%s.%s", screenshotDirPath, screenName, screenExtension);
     }
 
     /**
      * Генерирует случайную неповторимую строку на основе текущей даты.
-     * Длина строки 29 символов, что вписывается в различные требования.
+     * Длина строки 30 символов, что вписывается в различные требования.
+     * @param txtForFinish текст для окончания (исходные данные, из них возьмет 6 предпоследних символов)
      * @return случайная неповторимая строка
      */
-    protected static String getRandomStringDate() {
-        var dateTimeNow = java.time.LocalDateTime.now();
-        return String.format("%04d%02d%02d_%02d%02d%02d_%09d_r%02d",
-                dateTimeNow.getYear(),
-                dateTimeNow.getMonthValue(),
-                dateTimeNow.getDayOfMonth(),
-                dateTimeNow.getHour(),
-                dateTimeNow.getMinute(),
-                dateTimeNow.getSecond(),
-                dateTimeNow.getNano(),
-                new Random().nextInt(99)
+    protected static String getRandomStringDate(String txtForFinish) {
+        String dateTimeNow = java.time.LocalDateTime.now().format(
+                        java.time.format.DateTimeFormatter.ofPattern("yyMMdd_HHmmss_SSSSSSSSS")
+                );
+        if (txtForFinish.length() > 6)
+            txtForFinish = txtForFinish.substring(txtForFinish.length() - 7, txtForFinish.length() - 1);
+        return String.format("%s_%s",
+                dateTimeNow, txtForFinish
         );
     }
 }
