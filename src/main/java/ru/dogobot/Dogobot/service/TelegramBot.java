@@ -3,7 +3,6 @@ package ru.dogobot.Dogobot.service;
 import com.vdurmont.emoji.EmojiParser;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -11,6 +10,7 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
 import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -28,10 +28,7 @@ import ru.dogobot.Dogobot.model.UserRepository;
 
 import java.io.*;
 import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 @Slf4j
 @Component
@@ -45,7 +42,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     @Getter  @AllArgsConstructor
     public enum BotMenuEnum {
         START(      "/start",       "Здравствуйте!"),
-        SHOWDIR(    "/showdir",     "Показать содержимое папки"),   //todo переименовать. Варианты: "поехали","действия","home"...
+        SHOWDIR(    "/showdir",     "Показать содержимое папки"),
         SCREENSHOT( "/screenshot",  "Сделать скриншот"),
         MYDATA(     "/mydata",      "Посмотреть данные о себе"),
         DELETEDATA( "/deletedata",  "Удалить данные о себе"),
@@ -59,10 +56,11 @@ public class TelegramBot extends TelegramLongPollingBot {
     final List<BotCommand> botMenu;
 
     //нижняя клавиатура по умолчанию (только наименования в таблице)
-    List<List<String>> replyKeyboardNames = new ArrayList<>(Arrays.asList(
-            Arrays.asList("Домой", "Очистить чат")
-            //Arrays.asList("button3", "button4")
-    ));
+    List<List<String>> replyKeyboardNames = new ArrayList<>(
+            List.of( Arrays.asList("Домой", "Очистить чат") )
+    );
+
+    private long fileDirMenuMessageId;
 
     //endregion
 
@@ -70,9 +68,6 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     @Autowired
     private UserRepository userRepository;
-
-    @Autowired
-    private FileDir fileDir;
 
     @Autowired
     private FileManager fileManager;
@@ -120,7 +115,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             handlerText(update);
         } else if (update.hasCallbackQuery()) {                                 //Если прилетел CallbackQuery
             handlerCallBackQuery(update);
-        //todo можно добавить сохранение присланных файлов, но придется для каждого типа файла (музка, видео и т.п.) делать отдельный метод
+        //todo можно добавить сохранение присланных файлов, но придется для каждого типа файла (музыка, видео и т.п.) делать отдельный метод
         } else {
             log.error("Не могу распознать отправленную информацию: " + update);
         }
@@ -172,7 +167,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     /**
-     * Обработчик CallbackQuery
+     * Обработчик команд Callback
      * @param update объект обновления
      */
     private void handlerCallBackQuery(Update update) {
@@ -184,7 +179,12 @@ public class TelegramBot extends TelegramLongPollingBot {
             FileDir targetFileDir = fileManager.getCurrentPathDict().get(callbackData);
 
             if (targetFileDir.getFdNameInline().equals(fileManager.MENU)){
-                sendMessageWithoutKeyboard(chatId, "МЕНЮ");
+                sendMessageWithInlineFileDirMenu(
+                        chatId,
+                        messageId,
+                        FileManager.SELECT_MENU_ITEM,
+                        FileManager.FileDirMenu.values()
+                );
                 return;
             }
 
@@ -192,15 +192,18 @@ public class TelegramBot extends TelegramLongPollingBot {
             editMessageWithInlineKeyboard(
                     chatId,
                     messageId,
-                    "%s: %s".formatted("Текущий путь ", targetFileDir.getFdPath())
-                    , targetFileDir
+                    "%s: %s".formatted("Текущий путь ", targetFileDir.getFdPath()),
+                    targetFileDir
             );
-        }
-        else {
-            log.error("Не могу распознать нажатую кнопку: " + callbackData);
+            return;
         }
 
+        if (callbackData.equals(FileManager.FileDirMenu.REMOVE_MENU.getButtonCallback())){
+            deleteMessageWithFileDirMenu(chatId);
+            return;
+        }
 
+        log.error("Не могу распознать нажатую кнопку: " + callbackData);
     }
 
     //endregion
@@ -249,32 +252,48 @@ public class TelegramBot extends TelegramLongPollingBot {
     private void commandShowdirHandler(Update update) {
         long chatId = update.getMessage().getChatId();
         final String HOME_PATH = System.getProperty("user.home") + "/forTest";
-        this.fileDir = fileManager.getFileDirWithScan(HOME_PATH);
+        FileDir fileDir = fileManager.getFileDirWithScan(HOME_PATH);
         sendMessageWithInlineKeyboard(
                 chatId,
-                "%s: %s".formatted("Текущий путь ", this.fileDir.getFdPath()),
-                this.fileDir
+                "%s: %s".formatted("Текущий путь ", fileDir.getFdPath()),
+                fileDir
         );
     }
 
+    /**
+     * Обработчик команды /screenshot
+     * @param update объект обновления
+     */
     private void commandScreenshotHandler(Update update) {
         //сделать скриншот экрана
         String screenPath = screenshoter.take();
         sendFile(update.getMessage().getChatId(), screenPath);
     }
 
+    /**
+     * Обработчик команды /mydata
+     * @param update объект обновления
+     */
     private void commandMydataHandler(Update update) {
         //todo доделать этот метод
         long chatId = update.getMessage().getChatId();
         sendMessageWithoutKeyboard(chatId, "Запрошены данные о себе");
     }
 
+    /**
+     * Обработчик команды /deletedata
+     * @param update объект обновления
+     */
     private void commandDeletedataHandler(Update update) {
         //todo доделать этот метод
         long chatId = update.getMessage().getChatId();
         sendMessageWithoutKeyboard(chatId, "Запрошено удаление данных о себе");
     }
 
+    /**
+     * Обработчик команды /exit
+     * @param update объект обновления
+     */
     private void commandExitHandler(Update update) {
         //todo доделать этот метод
         long chatId = update.getMessage().getChatId();
@@ -282,6 +301,10 @@ public class TelegramBot extends TelegramLongPollingBot {
         System.exit(0);
     }
 
+    /**
+     * Обработчик команд не из списка
+     * @param update объект обновления
+     */
     private void commandOrElseHandler(Update update) {
         //todo доделать этот метод
         long chatId = update.getMessage().getChatId();
@@ -291,18 +314,6 @@ public class TelegramBot extends TelegramLongPollingBot {
     //endregion
 
     //region ОТПРАВКА И ИЗМЕНЕНИЕ СООБЩЕНИЙ
-
-    /**
-     * Метод для внесения изменений (отправка или правка) в чат с подготовленным сообщением
-     * @param message подготовленное сообщение
-     */
-    private void executeMessage(SendMessage message){
-        try {
-            execute(message);
-        } catch (TelegramApiException e) {
-            log.error("Не удалось внести изменения в чат (отправить/изменить): " + e.getMessage());
-        }
-    }
 
     //1. ПРОСТАЯ ОТПРАВКА СООБЩЕНИЯ
     /**
@@ -336,38 +347,72 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     //3. ОТПРАВКА СООБЩЕНИЯ С ИНЛАЙН-КЛАВИАТУРОЙ
     /**
-     * Метод для отправки текстового сообщения с вызовом Inline-клавиатуры
+     * Метод для отправки текстового сообщения с вызовом Inline-клавиатуры (на основе элемента файловой системы)
      * @param chatId Id чата получателя
      * @param textMessage текстовое сообщение
      * @param fileDir элемент файловой системы, содержащий информацию для создания клавиатуры (названия кнопок, команды и т.п.)
      */
     private void sendMessageWithInlineKeyboard(long chatId, String textMessage, FileDir fileDir) {
-        SendMessage message = new SendMessage();                            //создали сообщение
-        message.setChatId(String.valueOf(chatId));                          //указали чат
-        message.setText(textMessage);                                       //указали текст сообщения
+        SendMessage message = new SendMessage();
+        message.setChatId(String.valueOf(chatId));
+        message.setText(textMessage);
         InlineKeyboardMarkup markupInLine = getInlineKeyboardMarkup(fileDir);
-        message.setReplyMarkup(markupInLine);                               //добавили клавиатуру к сообщению
+        message.setReplyMarkup(markupInLine);
 
-        executeMessage(message);                                            //внесли изменения в чат (отправили)
+        executeMessage(message);
+    }
+    /**
+     * Метод для отправки текстового сообщения с вызовом Inline-клавиатуры (на основе переданного массива из именованных констант)
+     * @param chatId Id чата получателя
+     * @param textMessage текстовое сообщение
+     * @param fileDirMenuSortedCallbacks массив из именованных констант, содержащий как Callback-команды, так и названия кнопок
+     *                                   (предоставляет класс файлового менеджера)
+     */
+    private void sendMessageWithInlineFileDirMenu(long chatId, long messageId, String textMessage, FileManager.FileDirMenu[] fileDirMenuSortedCallbacks) {
+        SendMessage message = new SendMessage();
+        message.setChatId(String.valueOf(chatId));
+        message.setText(textMessage);
+        InlineKeyboardMarkup markupInLine = getInlineKeyboardMarkup(fileDirMenuSortedCallbacks);
+        message.setReplyMarkup(markupInLine);
+
+        this.fileDirMenuMessageId = executeMessage(message);
+
+    }
+
+    /**
+     * Метод для отправки подготовленного сообщением в чат
+     * @param message подготовленное сообщение
+     */
+    private Integer executeMessage(SendMessage message){
+        Integer messageId = null;
+        try {
+            messageId = execute(message).getMessageId();
+            log.info("Сообщение с id " + messageId + " в чат " + message.getChatId() + " отправлено");
+        } catch (TelegramApiException e) {
+            log.error("Не удалось отправить сообщение в чат: " + e.getMessage());
+        }
+        return messageId;
     }
 
     //4. ОТПРАВКА ФАЙЛА
     /**
-     * Метод для отправки файла
+     * Метод для отправки файла в чат
      * @param chatId Id чата получателя
      * @param filePath путь к отправляемому файлу
      */
     private void sendFile(long chatId, String filePath){
         try {
             execute(new SendDocument(String.valueOf(chatId), new InputFile(new File(filePath))));
+            log.info("Файл " + filePath + " отправлен в чате " + chatId);
         } catch (TelegramApiException | NullPointerException e) {
             log.error("Не удалось отправить файл: " + filePath + System.lineSeparator() + e.getMessage());
         }
     }
 
     //5. ИЗМЕНЕНИЕ УЖЕ ОТПРАВЛЕННОГО СООБЩЕНИЯ
+    //  1ая перегрузка
     /**
-     * Метод для изменения уже отправленного сообщения
+     * Метод для изменения уже отправленного сообщения без добавления клавиатур
      * @param chatId Id чата получателя
      * @param messageId Id сообщения
      * @param textMessage текстовое сообщение для замены старого сообщения
@@ -380,14 +425,14 @@ public class TelegramBot extends TelegramLongPollingBot {
 
         try {
             execute(message);
+            log.info("Сообщение с id " + messageId + " в чате " + chatId + " изменено");
         } catch (TelegramApiException e) {
-            log.error("ERROR_TEXT" + e.getMessage());
+            log.error("Не удалось изменить сообщение с id " + messageId + " в чате: " + e.getMessage());
         }
     }
-
-    //5. ИЗМЕНЕНИЕ УЖЕ ОТПРАВЛЕННОГО СООБЩЕНИЯ С IНЛАЙН-КЛАВИАТУРОЙ
+    //  2ая перегрузка
     /**
-     * Метод для изменения уже отправленного сообщения
+     * Метод для изменения уже отправленного сообщения с добавлением Inline-клавиатуры
      * @param chatId Id чата получателя
      * @param messageId Id сообщения
      * @param textMessage текстовое сообщение для замены старого сообщения
@@ -404,18 +449,35 @@ public class TelegramBot extends TelegramLongPollingBot {
 
         try {
             execute(message);
+            log.info("Сообщение с id " + messageId + " в чате " + chatId + " изменено");
         } catch (TelegramApiException e) {
-            log.error("ERROR_TEXT" + e.getMessage());
+            log.error("Не удалось изменить сообщение с id " + messageId + " в чате: " + e.getMessage());
         }
     }
+
+    //6. УДАЛЕНИЕ УЖЕ ОТПРАВЛЕННОГО СООБЩЕНИЯ С IНЛАЙН-КЛАВИАТУРОЙ
+    private void deleteMessageWithFileDirMenu(long chatIdLong){
+        Integer messageId = (int) this.fileDirMenuMessageId;
+        String chatId = String.valueOf(chatIdLong);
+        DeleteMessage deleteMessage = new DeleteMessage(chatId, messageId);
+
+        try {
+            execute(deleteMessage);
+            log.info("Сообщение с id " + messageId + " в чате " + chatId + " удалено");
+        } catch (TelegramApiException e) {
+            log.error("Не удалось удалить сообщение с id " + messageId + " в чате: " + e.getMessage());
+        }
+    }
+
     //endregion
 
     //region КЛАВИАТУРЫ
 
-    //СОЗДАНИЕ И ВОЗВРАТ Inline-КЛАВИАТУРЫ
+    //СОЗДАНИЕ И ВОЗВРАТ Inline-КЛАВИАТУРЫ.
+    //      1ая перегрузка - для файловой системы
     /**
-     * Метод создания и возврата Inline-клавиатуры на основе переданной таблицы названий кнопок.
-     * Из недостатков - единое правило на все команды CallbackData.
+     * Метод создания и возврата Inline-клавиатуры на основе переданной fileDir.
+     * ВАЖНО - единое правило на все команды CallbackData.
      * @param fileDir элемент файловой системы, содержащий информацию для создания клавиатуры (названия кнопок, команды и т.п.)
      * @return Inline-клавиатура
      */
@@ -431,6 +493,27 @@ public class TelegramBot extends TelegramLongPollingBot {
                 iButton.setCallbackData(fileDirInFolder.getFdCallbackData());
                 iRow.add(iButton);
             }
+            iRows.add(iRow);
+        }
+        iKeyboard.setKeyboard(iRows);
+        return iKeyboard;
+    }
+    //      2ая перегрузка - для меню элементов файловой системы
+    /**
+     * Метод создания и возврата Inline-клавиатуры на основе переданного массива из именованных констант.
+     * @param fileDirMenuSortedCallbacks массив из именованных констант, содержащий как Callback-команды, так и названия кнопок
+     *                                   (предоставляет класс файлового менеджера)
+     * @return Inline-клавиатура
+     */
+    private InlineKeyboardMarkup getInlineKeyboardMarkup(FileManager.FileDirMenu[] fileDirMenuSortedCallbacks) {
+        InlineKeyboardMarkup iKeyboard = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> iRows = new ArrayList<>();
+        for (int i = 0; i < fileDirMenuSortedCallbacks.length; i++) {
+            List<InlineKeyboardButton> iRow = new ArrayList<>();
+            InlineKeyboardButton iButton = new InlineKeyboardButton();
+            iButton.setText(fileDirMenuSortedCallbacks[i].getButtonText());
+            iButton.setCallbackData(fileDirMenuSortedCallbacks[i].getButtonCallback());
+            iRow.add(iButton);
             iRows.add(iRow);
         }
         iKeyboard.setKeyboard(iRows);

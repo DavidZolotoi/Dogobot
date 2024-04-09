@@ -8,16 +8,19 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.time.LocalDateTime;
 import java.util.Random;
 
 @Slf4j
 @Component
 public class Screenshoter {
 
+    /**
+     * Делает скриншот экрана
+     * @return полный путь к скриншоту
+     */
     public String take() {
         System.setProperty("java.awt.headless", "false");
-        GraphicsEnvironment ge = null;
+        GraphicsEnvironment ge;
         GraphicsDevice[] screens = new GraphicsDevice[0];
         try {
             ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
@@ -40,15 +43,15 @@ public class Screenshoter {
             log.error("Не удалось захватить изображение для скриншота: " + e.getMessage());
         }
 
-        String screenExtension = "png";
         String screenshotDirPath = "../screenshots";
+        String screenName = getRandomStringDate(String.valueOf(new Random().nextInt(10)));
+        String screenExtension = "png";
+        String screenPath =  String.format("%s/%s.%s", screenshotDirPath, screenName, screenExtension);
 
         File dir = new File(screenshotDirPath);
-        if (!dir.exists()) {
-            dir.mkdirs();
+        if (!dir.exists() && !dir.mkdirs()) {
+            log.error("Не удалось создать каталог для скриншотов");
         }
-
-        String screenPath = getScreenPath(screenExtension, screenshotDirPath);
 
         File imageFile = null;
         try {
@@ -66,14 +69,8 @@ public class Screenshoter {
         return screenPath;
     }
 
-    private String getScreenPath(String screenExtension, String screenshotDirPath) {
-        String screenName = getRandomStringDate(String.valueOf(new Random().nextInt(10)));
-        // Строка, содержащая полный путь к файлу
-        return String.format("%s/%s.%s", screenshotDirPath, screenName, screenExtension);
-    }
-
     /**
-     * Генерирует случайную неповторимую строку на основе текущей даты.
+     * Генерирует случайную неповторимую строку на основе текущей даты и части строкового окончания.
      * Длина строки 30 символов, что вписывается в различные требования.
      * @param txtForFinish текст для окончания (исходные данные, из них возьмет 6 предпоследних символов)
      * @return случайная неповторимая строка

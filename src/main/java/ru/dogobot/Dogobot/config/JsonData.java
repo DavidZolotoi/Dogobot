@@ -15,37 +15,19 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
+@Setter
+@Getter
 @Component
 public class JsonData {
-    @Getter @Setter
     private Map<String, String> settings;
 
     /**
      * Проверить существование статического словаря настроек и ключей в нём.
      * Если словаря нет, то создать.
      * Если ключей в словаре нет, то добавить, прочитав их значения из файла.
-     * @param mapForUpdate словарь, который необходимо проверить и вернуть.
      * @param filePath путь к файлу, в котором хранятся ключи и значения для словаря
      * @param jsonKeys ключи, которые необходимо проверить или добавить
      * @return Проверенный и дополненный в случае необходимости словарь.
-     */
-    protected Map<String, String> updateSettings(Map<String, String> mapForUpdate, String filePath, String... jsonKeys) {
-        if (mapForUpdate == null) mapForUpdate = new HashMap<>();
-        for (var jsonKey:jsonKeys) {
-            if (!mapForUpdate.containsKey(jsonKey))
-                updateJsonRow(mapForUpdate, filePath, jsonKey);
-        }
-        return mapForUpdate;
-    }
-
-    /**
-     * Проверить существование статического словаря настроек и ключей в нём.
-     * Если словаря нет, то создать.
-     * Если ключей в словаре нет, то добавить, прочитав их значения из файла.
-     * @param filePath путь к файлу, в котором хранятся ключи и значения для словаря
-     * @param jsonKeys ключи, которые необходимо проверить или добавить
-     * @return Проверенный и дополненный в случае необходимости словарь.
-     * //todo Подумать как вместо дублирования просто вызывать перегруженный метод
      */
     protected Map<String, String> updateSettings(String filePath, String... jsonKeys) {
         if (settings == null) settings = new HashMap<>();
