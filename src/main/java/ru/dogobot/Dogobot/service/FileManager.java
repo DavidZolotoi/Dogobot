@@ -3,8 +3,9 @@ package ru.dogobot.Dogobot.service;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.mail.EmailException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import ru.dogobot.Dogobot.model.FileDir;
 
 import java.io.File;
@@ -13,7 +14,7 @@ import java.util.stream.Stream;
 
 @Getter
 @Slf4j
-@Component
+@Service
 public class FileManager {
     final String MENU = "===[ МЕНЮ ]===";                               //должно быть менее 32 символов
     final String EXIT_DIR = "[ .. ]";                                   //должно быть менее 32 символов
@@ -21,23 +22,32 @@ public class FileManager {
 
     @Getter  @AllArgsConstructor
     protected enum FileDirMenu {
-        ALL_INFO(                   "CBD_FDM_00",   "Полная информация"),
-        SEND_TO_ME_ON_TELEGRAM(     "CBD_FDM_01",   "Отправить мне в Telegram"),
-        SEND_TO_FRIEND_ON_TELEGRAM( "CBD_FDM_02",   "Отправить другу в Telegram"),
-        SEND_TO_ME_ON_EMAIL(        "CBD_FDM_03",   "Отправить мне на почту"),
-        SEND_TO_FRIEND_ON_EMAIL(    "CBD_FDM_04",   "Отправить другу на почту"),
-        PACK(                       "CBD_FDM_05",   "Архивировать рядом"),
-        PACK_WITH_PASSWORD(         "CBD_FDM_06",   "Архивировать с паролем"),
-        RENAME(                     "CBD_FDM_07",   "Переименовать"),
-        COPY(                       "CBD_FDM_08",   "Копировать"),
-        MOVE(                       "CBD_FDM_09",   "Переместить"),
-        DELETE(                     "CBD_FDM_10",   "Удалить"),
-        TERMINAL(                   "CBD_FDM_11",   "Терминал"),
-        REMOVE_MENU(                "CBD_FDM_12",   "<< УБРАТЬ МЕНЮ >>");
+        GET_INFO(            "CBD_FDM_00", "Получить информацию"),
+        GET_ON_TELEGRAM(     "CBD_FDM_01", "Получить в Telegram"),
+        GET_ON_EMAIL(        "CBD_FDM_10", "Получить на почту"),
+        SEND_TO_EMAIL(       "CBD_FDM_11", "Отправить на почту"),
+        PACK(                "CBD_FDM_20", "Упаковать в zip"),
+        PACK_WITH_PASSWORD(  "CBD_FDM_21", "Упаковать в zip с паролем"),
+        UNPACK(              "CBD_FDM_22", "Распаковать из zip"),
+        UNPACK_WITH_PASSWORD("CBD_FDM_23", "Распаковать из zip с паролем"),
+        RENAME(              "CBD_FDM_30", "Переименовать"),
+        COPY(                "CBD_FDM_31", "Копировать"),
+        MOVE(                "CBD_FDM_32", "Переместить"),
+        DELETE(              "CBD_FDM_33", "Удалить"),
+        TERMINAL(            "CBD_FDM_40", "Терминал"),
+        REMOVE_MENU(         "CBD_FDM_99", "<< УБРАТЬ МЕНЮ >>");
+        //SEND_TO_TELEGRAM( "CBD_FDM_02", "Отправить другу в Telegram");
 
         private final String buttonCallback;
         private final String buttonText;
+
     }
+
+    @Autowired
+    Archiver archiver;
+
+    @Autowired
+    Emailer emailer;
 
     @Autowired
     private FileDir fileDir;
@@ -248,5 +258,49 @@ public class FileManager {
         );
 
         return fileDir;
+    }
+
+    /**
+     * Отправляет письмо с вложением на почту по умолчанию.
+     * @param fileDir элемент файловой системы, для которого работает метод
+     */
+    protected void sendEmailWithAttachment(FileDir fileDir) {
+        String pathToAttachment = fileDir.getFdPath();
+        String recipient = "dogobot@bk.ru";
+        String subject = (pathToAttachment.length() > 30)
+                ?
+                "....%s".formatted(pathToAttachment.substring(pathToAttachment.length() - 30))
+                :
+                pathToAttachment;
+        String text = fileDir.toString();
+        try {
+            emailer.sendEmailWithAttachment(recipient, subject, text, pathToAttachment);
+
+            //emailer.receiveEmailWithAttachment("......./");
+        } catch (EmailException e) {
+            log.error("Не удалось отправить письмо: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Отправляет письмо с вложением на почту из настроек.
+     * @param fileDir элемент файловой системы, для которого работает метод
+     * @param recipient адрес получателя из настроек
+     */
+    protected void sendEmailWithAttachment(FileDir fileDir, String recipient) {
+        String pathToAttachment = fileDir.getFdPath();
+        String subject = (pathToAttachment.length() > 30)
+                ?
+                "....%s".formatted(pathToAttachment.substring(pathToAttachment.length() - 30))
+                :
+                pathToAttachment;
+        String text = fileDir.toString();
+        try {
+            emailer.sendEmailWithAttachment(recipient, subject, text, pathToAttachment);
+
+            //emailer.receiveEmailWithAttachment("......./");
+        } catch (EmailException e) {
+            log.error("Не удалось отправить письмо: " + e.getMessage());
+        }
     }
 }

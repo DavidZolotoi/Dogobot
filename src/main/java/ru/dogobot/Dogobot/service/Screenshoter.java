@@ -2,6 +2,7 @@ package ru.dogobot.Dogobot.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -11,7 +12,7 @@ import java.io.IOException;
 import java.util.Random;
 
 @Slf4j
-@Component
+@Service
 public class Screenshoter {
 
     /**

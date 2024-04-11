@@ -6,7 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
-import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Configuration;
 
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -17,23 +17,24 @@ import java.util.Map;
 @Slf4j
 @Setter
 @Getter
-@Component
+@Configuration
 public class JsonData {
+    final String filePath = "../.hidden/.hidden";
+
     private Map<String, String> settings;
 
-    /**
-     * Проверить существование статического словаря настроек и ключей в нём.
+        /**
+     * Проверить существование словаря настроек и ключей в нём.
      * Если словаря нет, то создать.
      * Если ключей в словаре нет, то добавить, прочитав их значения из файла.
-     * @param filePath путь к файлу, в котором хранятся ключи и значения для словаря
      * @param jsonKeys ключи, которые необходимо проверить или добавить
      * @return Проверенный и дополненный в случае необходимости словарь.
      */
-    protected Map<String, String> updateSettings(String filePath, String... jsonKeys) {
+    protected Map<String, String> updateSettings(String... jsonKeys) {
         if (settings == null) settings = new HashMap<>();
         for (var jsonKey:jsonKeys) {
             if (!settings.containsKey(jsonKey))
-                updateJsonRow(settings, filePath, jsonKey);
+                updateJsonRow(settings, this.filePath, jsonKey);
         }
         return settings;
     }

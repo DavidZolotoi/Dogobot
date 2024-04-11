@@ -5,7 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
 import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
@@ -31,7 +31,7 @@ import java.sql.Timestamp;
 import java.util.*;
 
 @Slf4j
-@Component
+@Service
 public class TelegramBot extends TelegramLongPollingBot {
     //todo посмотреть модификаторы доступа
 
@@ -175,19 +175,23 @@ public class TelegramBot extends TelegramLongPollingBot {
         long messageId = update.getCallbackQuery().getMessage().getMessageId();
         long chatId = update.getCallbackQuery().getMessage().getChatId();
 
+        System.out.println(callbackData);
+
+        // если callbackData - один из пунктов словаря актуальной папки
         if (fileManager.getCurrentPathDict().containsKey(callbackData)){
             FileDir targetFileDir = fileManager.getCurrentPathDict().get(callbackData);
 
+            //если нажали на кнопку МЕНЮ
             if (targetFileDir.getFdNameInline().equals(fileManager.MENU)){
                 sendMessageWithInlineFileDirMenu(
                         chatId,
-                        messageId,
                         FileManager.SELECT_MENU_ITEM,
                         FileManager.FileDirMenu.values()
                 );
                 return;
             }
 
+            //если нажали на кнопку на элемент файловой системы
             targetFileDir = fileManager.getFileDirWithScan(targetFileDir.getFdPath());
             editMessageWithInlineKeyboard(
                     chatId,
@@ -198,6 +202,109 @@ public class TelegramBot extends TelegramLongPollingBot {
             return;
         }
 
+        //если нажали на кнопку "Получить информацию"
+        if (callbackData.equals(FileManager.FileDirMenu.GET_INFO.getButtonCallback())){
+            sendMessageWithoutKeyboard(
+                    chatId,
+                    fileManager.getFileDir().toString()
+            );
+            deleteMessageWithFileDirMenu(chatId);
+            return;
+        }
+
+        //если нажали на кнопку "Получить в телеграм"
+        if (callbackData.equals(FileManager.FileDirMenu.GET_ON_TELEGRAM.getButtonCallback())){
+            if (fileManager.getFileDir().getFdType().equals(FileDir.FDType.FILE)) {
+                sendFile(chatId, fileManager.getFileDir().getFdPath());
+            } else {
+                sendMessageWithoutKeyboard(
+                        chatId,
+                        "Это папка, для отправки в телеграм, её сначала нужно упаковать в архив."
+                );
+            }
+            deleteMessageWithFileDirMenu(chatId);
+            return;
+        }
+
+        //если нажали на кнопку "Получить на почту"
+        if (callbackData.equals(FileManager.FileDirMenu.GET_ON_EMAIL.getButtonCallback())){
+            if (fileManager.getFileDir().getFdType().equals(FileDir.FDType.FILE)) {
+                fileManager.sendEmailWithAttachment(fileManager.getFileDir());
+                sendMessageWithoutKeyboard(
+                        chatId,
+                        "'%s' отправлен на почту".formatted(fileManager.getFileDir().getFdPath())
+                );
+            } else {
+                sendMessageWithoutKeyboard(
+                        chatId,
+                        "Это папка, для отправки на почту, её сначала нужно упаковать в архив."
+                );
+            }
+            deleteMessageWithFileDirMenu(chatId);
+            return;
+        }
+
+        //если нажали на кнопку "Отправить на почту"
+        if (callbackData.equals(FileManager.FileDirMenu.SEND_TO_EMAIL.getButtonCallback())){
+            if (fileManager.getFileDir().getFdType().equals(FileDir.FDType.FILE)) {
+                fileManager.sendEmailWithAttachment(fileManager.getFileDir(), "dogobot@bk.ru"); //todo достать из настроек пользователя
+                sendMessageWithoutKeyboard(
+                        chatId,
+                        "'%s' отправлен на почту из настроек".formatted(fileManager.getFileDir().getFdPath())
+                );
+            } else {
+                sendMessageWithoutKeyboard(
+                        chatId,
+                        "Это папка, для отправки на почту, её сначала нужно упаковать в архив."
+                );
+            }
+            deleteMessageWithFileDirMenu(chatId);
+            return;
+        }
+
+        //если нажали на кнопку "Упаковать в zip"
+        if (callbackData.equals(FileManager.FileDirMenu.PACK.getButtonCallback())){
+            fileManager.archiver.zipFolderWithoutPassword(
+                    fileManager.getFileDir().getFdPath()
+            );
+            sendMessageWithoutKeyboard(chatId, "Папка успешно сжата в архив без установки пароля.");
+            deleteMessageWithFileDirMenu(chatId);
+            return;
+        }
+
+        //если нажали на кнопку "Упаковать в zip с паролем"
+        if (callbackData.equals(FileManager.FileDirMenu.PACK_WITH_PASSWORD.getButtonCallback())){
+            fileManager.archiver.zipFolderWithPassword(
+                    fileManager.getFileDir().getFdPath(),
+                    "111"   //todo достать из настроек пользователя
+            );
+            sendMessageWithoutKeyboard(chatId, "Папка успешно сжата в архив с установкой пароля.");
+            deleteMessageWithFileDirMenu(chatId);
+            return;
+        }
+
+        //если нажали "Распаковать из zip"
+        if (callbackData.equals(FileManager.FileDirMenu.UNPACK.getButtonCallback())){
+            fileManager.archiver.unzipFileWithoutPassword(
+                    fileManager.getFileDir().getFdPath()
+            );
+            sendMessageWithoutKeyboard(chatId, "Архив успешно распакован без пароля.");
+            deleteMessageWithFileDirMenu(chatId);
+            return;
+        }
+
+        //если нажали "Распаковать из zip с паролем"
+        if (callbackData.equals(FileManager.FileDirMenu.UNPACK_WITH_PASSWORD.getButtonCallback())){
+            fileManager.archiver.unzipFileWithPassword(
+                    fileManager.getFileDir().getFdPath(),
+                    "111"   //todo достать из настроек пользователя
+            );
+            sendMessageWithoutKeyboard(chatId, "Архив успешно распакован с паролем.");
+            deleteMessageWithFileDirMenu(chatId);
+            return;
+        }
+
+        //если нажали на кнопку "Убрать меню"
         if (callbackData.equals(FileManager.FileDirMenu.REMOVE_MENU.getButtonCallback())){
             deleteMessageWithFileDirMenu(chatId);
             return;
@@ -368,7 +475,7 @@ public class TelegramBot extends TelegramLongPollingBot {
      * @param fileDirMenuSortedCallbacks массив из именованных констант, содержащий как Callback-команды, так и названия кнопок
      *                                   (предоставляет класс файлового менеджера)
      */
-    private void sendMessageWithInlineFileDirMenu(long chatId, long messageId, String textMessage, FileManager.FileDirMenu[] fileDirMenuSortedCallbacks) {
+    private void sendMessageWithInlineFileDirMenu(long chatId, String textMessage, FileManager.FileDirMenu[] fileDirMenuSortedCallbacks) {
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(chatId));
         message.setText(textMessage);
