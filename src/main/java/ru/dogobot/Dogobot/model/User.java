@@ -5,6 +5,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import ru.dogobot.Dogobot.config.UserDefaultConfig;
 
 import java.sql.Timestamp;
 
@@ -12,6 +14,7 @@ import java.sql.Timestamp;
 @Entity
 @Table(name = "usersDataTable")
 public class User {
+
     @Id
     @Column(name = "chat_id")
     private Long chatId;
@@ -23,4 +26,23 @@ public class User {
     private String userName;
     @Column(name = "registered_at")
     private Timestamp registeredAt;
+
+    //личные настройки
+    @Column(name = "pack_password")
+    private String packPassword;
+    @Column(name = "personal_email")
+    private String personalEmail;
+    @Column(name = "other_email")
+    private String otherEmail;
+
+    @Override
+    public String toString() {
+        String sep = System.lineSeparator();
+        return "Данные о пользователе:" + sep +
+                "Id=" + chatId + ", " + sep
+                + "First Name='" + firstName + '\'' + ", " + sep
+                + "Last Name='" + lastName + '\'' + ", " + sep
+                + "User Name='" + userName + '\'' + ", " + sep
+                + "Registered at=" + registeredAt;
+    }
 }

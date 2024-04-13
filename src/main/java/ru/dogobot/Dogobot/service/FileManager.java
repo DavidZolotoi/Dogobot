@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import ru.dogobot.Dogobot.model.FileDir;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -31,8 +32,8 @@ public class FileManager {
         UNPACK(              "CBD_FDM_22", "Распаковать из zip"),
         UNPACK_WITH_PASSWORD("CBD_FDM_23", "Распаковать из zip с паролем"),
         RENAME(              "CBD_FDM_30", "Переименовать"),
-        COPY(                "CBD_FDM_31", "Копировать"),
-        MOVE(                "CBD_FDM_32", "Переместить"),
+        MOVE(                "CBD_FDM_31", "Переместить"),
+        COPY(                "CBD_FDM_32", "Копировать"),
         DELETE(              "CBD_FDM_33", "Удалить"),
         TERMINAL(            "CBD_FDM_40", "Терминал"),
         REMOVE_MENU(         "CBD_FDM_99", "<< УБРАТЬ МЕНЮ >>");
@@ -44,10 +45,16 @@ public class FileManager {
     }
 
     @Autowired
+    Emailer emailer;
+
+    @Autowired
     Archiver archiver;
 
     @Autowired
-    Emailer emailer;
+    Filer filer;
+
+    @Autowired
+    Terminaler terminaler;
 
     @Autowired
     private FileDir fileDir;
@@ -211,7 +218,7 @@ public class FileManager {
                 fileByNextPath,
                 fileByNextPath.getParentFile()
         };
-        if (!fileDir.getFdJavaIoFile().isDirectory())   //если файл, то на этом всё
+        if (fileByNextPath.listFiles() == null)   //если файл, то на этом всё
             return dirsAndFilesWithDefault;
 
         //сортированный массив элементов ФС внутри папки
@@ -245,6 +252,8 @@ public class FileManager {
         List<List<String>> inlineKeyboardIds = new ArrayList<>();
 
         for(File file : fileDir.getFdArray()) {
+            if ( file == null)
+                continue;
             FileDir fileDirInPath = getFileDirWithoutScan(file.getAbsolutePath());
             currentPathDict.put(fileDirInPath.getFdId(), fileDirInPath);
 
@@ -259,6 +268,8 @@ public class FileManager {
 
         return fileDir;
     }
+
+    //region РАБОТА С ЭЛЕКТРОННОЙ ПОЧТОЙ
 
     /**
      * Отправляет письмо с вложением на почту по умолчанию.
@@ -303,4 +314,95 @@ public class FileManager {
             log.error("Не удалось отправить письмо: " + e.getMessage());
         }
     }
+
+    //endregion
+
+    //region РАБОТА С АРХИВАМИ
+
+    public void zipFileDirWithoutPassword(FileDir sourceFileDir) {
+        //todo подготовить отчет для отправки пользователю и в лог
+        archiver.zipFolderWithoutPassword(sourceFileDir.getFdPath());
+    }
+
+    public void zipFileDirWithPassword(FileDir sourceFileDir, String password) {
+        //todo подготовить отчет для отправки пользователю и в лог
+        archiver.zipFolderWithPassword(sourceFileDir.getFdPath(), password);
+    }
+
+    public void unzipFileDirWithoutPassword(FileDir sourceFileDir) {
+        //todo подготовить отчет для отправки пользователю и в лог
+        archiver.unzipFileWithoutPassword(sourceFileDir.getFdPath());
+    }
+
+    public void unzipFileDirWithPassword(FileDir sourceFileDir, String password) {
+        //todo подготовить отчет для отправки пользователю и в лог
+        archiver.unzipFileWithPassword(sourceFileDir.getFdPath(), password);
+    }
+
+    //endregion
+
+    //region РАБОТА С ФАЙЛАМИ
+
+    public String fileDirRename(FileDir oldFileDir, String newName) {
+        String report = "Папка или файл: " + oldFileDir.getFdNameOriginal() + " переименован в: " + newName;
+        if(!filer.renameFileDir(oldFileDir.getFdJavaIoFile(), newName)){
+            report = "Не удалось переименовать папку или файл: " + oldFileDir.getFdNameOriginal();
+            log.error(report);
+        }
+        return report;
+    }
+
+    public String fileDirMove(FileDir fileDire, String newPathParent) {
+        String report = "Папка или файл: " + fileDire.getFdPath() + " перемещена на путь: " + newPathParent;
+        if(!filer.moveFileDir(
+                fileDire.getFdJavaIoFile(),
+                new File(newPathParent, fileDire.getFdNameOriginal()).getAbsolutePath()
+        )){
+            report = "Не удалось переместить папку или файл: " + fileDire.getFdPath();
+            log.error(report);
+        }
+        return report;
+    }
+
+    public String fileDirCopy(FileDir fileDire, String newPathParent) {
+        String report = null;
+
+        try {
+            filer.copyFileDir(
+                    fileDire.getFdJavaIoFile().toPath(),
+                    (new File(newPathParent, fileDire.getFdNameOriginal())).toPath()
+            );
+            report = "Папка или файл: " + fileDire.getFdPath() + " скопирована на путь: " + newPathParent;
+        } catch (Exception e){
+            report = "Не удалось скопировать папку или файл: " + fileDire.getFdPath() + e.getMessage();
+            log.error(report);
+        }
+        return report;
+    }
+
+    public String fileDirDelete(FileDir fileDir) {
+        String report = null;
+        try {
+            filer.deleteFileDir(fileDir.getFdJavaIoFile());
+            report = "Папка или файл: " + fileDir.getFdPath() + " удалена";
+        } catch (Exception e){
+            report = "Не удалось удалить папку или файл: " + fileDir.getFdPath() + e.getMessage();
+            log.error(report);
+        }
+        return report;
+    }
+
+    //endregion
+
+    protected String terminalExecute(String script) {
+        String report = null;
+        try {
+            report = terminaler.processExecute(script);
+        } catch (IOException e) {
+            report = "Не удалось выполнить команду: " + script + "\n" + e.getMessage();
+            log.error(report);
+        }
+        return report;
+    }
+
 }

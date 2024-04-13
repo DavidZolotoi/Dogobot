@@ -13,15 +13,17 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class BotConfig {
     String botName;
     String token;
+    Long authorId;
     Long ownerId;
 
     @Autowired
     public BotConfig(JsonData jsonData) {
-        jsonData.setSettings(jsonData.updateSettings("DOGOBOT1", "DOGOBOT2", "DOGOBOT3"));
+        jsonData.setSettings(jsonData.updateSettings("DOGOBOT1", "DOGOBOT2", "DOGOBOT3", "DOGOBOT10"));
         try {
             this.botName = jsonData.getSettings().get("DOGOBOT1");
             this.token = jsonData.getSettings().get("DOGOBOT2");
-            this.ownerId = Long.parseLong(jsonData.getSettings().get("DOGOBOT3"));
+            this.authorId = Long.parseLong(jsonData.getSettings().get("DOGOBOT3"));
+            this.ownerId = Long.parseLong(jsonData.getSettings().get("DOGOBOT10"));
         }
         catch (Exception e) {
             log.error("Не получается получить данные бота из jsonData.getSettings() или не получается Long.parseLong(..)." + System.lineSeparator() + e.getMessage());

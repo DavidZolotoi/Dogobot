@@ -17,7 +17,7 @@ public class Archiver {
 
     /**
      * Сжатие папки в архив zip без пароля
-     * @param sourceFolder путь исходной папки
+     * @param sourceFolder путь исходной папке
      */
     public void zipFolderWithoutPassword(String sourceFolder) {
         try {
@@ -44,7 +44,7 @@ public class Archiver {
 
     /**
      * Сжатие папки в архив zip с паролем
-     * @param sourceFolder путь исходной папки
+     * @param sourceFolder путь исходной папке
      * @param password пароль для установки на архив
      */
     public void zipFolderWithPassword(String sourceFolder, String password) {
