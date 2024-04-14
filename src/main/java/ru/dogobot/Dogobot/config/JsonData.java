@@ -30,7 +30,7 @@ public class JsonData {
      * @param jsonKeys ключи, которые необходимо проверить или добавить
      * @return Проверенный и дополненный в случае необходимости словарь.
      */
-    protected Map<String, String> updateSettings(String... jsonKeys) {
+    public Map<String, String> updateSettings(String... jsonKeys) {
         if (settings == null) settings = new HashMap<>();
         for (var jsonKey:jsonKeys) {
             if (!settings.containsKey(jsonKey))

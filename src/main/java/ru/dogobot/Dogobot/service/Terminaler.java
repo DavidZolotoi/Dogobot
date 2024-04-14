@@ -31,7 +31,7 @@ public class Terminaler {
     }
 
     public String processBuilderExecute(String[] script){
-        String javaBin = System.getProperty("java.home") + File.separator + "bin" + File.separator + "java";
+//        String javaBin = System.getProperty("java.home") + File.separator + "bin" + File.separator + "java";
         ProcessBuilder builder = new ProcessBuilder(script);
 
         InputStream is = null;

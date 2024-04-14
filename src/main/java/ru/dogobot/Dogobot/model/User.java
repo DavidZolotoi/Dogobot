@@ -5,8 +5,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.*;
-import org.springframework.beans.factory.annotation.Autowired;
-import ru.dogobot.Dogobot.config.UserDefaultConfig;
 
 import java.sql.Timestamp;
 
@@ -38,11 +36,15 @@ public class User {
     @Override
     public String toString() {
         String sep = System.lineSeparator();
-        return "Данные о пользователе:" + sep +
+        //todo выводить только то, что не null
+        return "Данные о пользователе." + sep +
                 "Id=" + chatId + ", " + sep
                 + "First Name='" + firstName + '\'' + ", " + sep
                 + "Last Name='" + lastName + '\'' + ", " + sep
                 + "User Name='" + userName + '\'' + ", " + sep
+                + "Pack Password='" + packPassword + '\'' + ", " + sep
+                + "Personal Email='" + personalEmail + '\'' + ", " + sep
+                + "Other Email='" + otherEmail + '\'' + ", " + sep
                 + "Registered at=" + registeredAt;
     }
 }

@@ -3,8 +3,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -39,7 +37,7 @@ public class Filer {
                                 Files.copy(sourcePath, destPath, StandardCopyOption.REPLACE_EXISTING);
                             }
                         } catch (IOException e) {
-                            e.printStackTrace();
+                            log.error("Не удалось скопировать адрес: " + sourcePath + System.lineSeparator() + e.getMessage());
                         }
                     });
         } else {

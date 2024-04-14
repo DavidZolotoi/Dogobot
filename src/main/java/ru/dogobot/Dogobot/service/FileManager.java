@@ -1,15 +1,20 @@
 package ru.dogobot.Dogobot.service;
 
+import com.vdurmont.emoji.EmojiParser;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.mail.EmailException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.telegram.telegrambots.meta.api.objects.Update;
+import ru.dogobot.Dogobot.config.EmailConfig;
 import ru.dogobot.Dogobot.model.FileDir;
+import ru.dogobot.Dogobot.model.User;
 
 import java.io.File;
 import java.io.IOException;
+import java.sql.Timestamp;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -45,7 +50,15 @@ public class FileManager {
     }
 
     @Autowired
+    Userer userer;
+
+    @Autowired
+    Screenshoter screenshoter;
+
+    @Autowired
     Emailer emailer;
+    @Autowired
+    EmailConfig emailConfig;
 
     @Autowired
     Archiver archiver;
@@ -269,29 +282,135 @@ public class FileManager {
         return fileDir;
     }
 
-    //region РАБОТА С ЭЛЕКТРОННОЙ ПОЧТОЙ
+    //region РАБОТА С ПОЛЬЗОВАТЕЛЯМИ
 
-    /**
-     * Отправляет письмо с вложением на почту по умолчанию.
-     * @param fileDir элемент файловой системы, для которого работает метод
-     */
-    protected void sendEmailWithAttachment(FileDir fileDir) {
-        String pathToAttachment = fileDir.getFdPath();
-        String recipient = "dogobot@bk.ru";
-        String subject = (pathToAttachment.length() > 30)
-                ?
-                "....%s".formatted(pathToAttachment.substring(pathToAttachment.length() - 30))
-                :
-                pathToAttachment;
-        String text = fileDir.toString();
-        try {
-            emailer.sendEmailWithAttachment(recipient, subject, text, pathToAttachment);
-
-            //emailer.receiveEmailWithAttachment("......./");
-        } catch (EmailException e) {
-            log.error("Не удалось отправить письмо: " + e.getMessage());
-        }
+    public User createUserFromUpdateWithoutDB(Update update) {
+        User user = new User();
+        var message = update.getMessage();
+        user.setChatId(message.getFrom().getId());
+        user.setFirstName(message.getChat().getFirstName());
+        user.setLastName(message.getChat().getLastName());
+        user.setUserName(message.getChat().getUserName());
+        user.setRegisteredAt(new Timestamp(System.currentTimeMillis()));
+        user.setPackPassword(userer.getPackPasswordDefault());
+        user.setPersonalEmail(emailConfig.getEmail());
+        return user;
     }
+
+    public String findUserOrRegister(Update update) {
+        String smileBlush = EmojiParser.parseToUnicode(":blush:");
+        String report = null;
+
+        if(findUser(update) != null){
+            report = "Данные о пользователе найдены. Вы можете проверить их корректность вызвав соответствующую команду из меню" + smileBlush;
+        } else{
+            registerUser(update);
+            report = "Пользователь успешно зарегистрирован!" + smileBlush;
+        }
+
+        return report;
+    }
+
+    public User findUser(Update update) {
+        String smileBlush = EmojiParser.parseToUnicode(":blush:");
+        String report = null;
+        User user = null;
+
+        try {
+            user = userer.findUserById(update.getMessage().getChatId());
+            report = "Данные о пользователе найдены " + smileBlush;
+            log.info(report + System.lineSeparator() + user);
+        } catch (Exception e) {
+            report = "Не удалось получить данные о пользователе. Возможно пользователь не зарегистрирован.";
+            log.error(report + System.lineSeparator() + e.getMessage());
+        }
+
+        return user;
+    }
+
+    public User registerUser(Update update) {
+        String smileBlush = EmojiParser.parseToUnicode(":blush:");
+        String report = null;
+        User user = null;
+
+        try {
+            user = userer.registerUser(createUserFromUpdateWithoutDB(update));
+            report = "Пользователь успешно зарегистрирован!" + smileBlush;
+            log.info(report + System.lineSeparator() + user);
+        } catch (Exception e) {
+            report = "Не удалось зарегистрировать пользователя.";
+            log.error(report + System.lineSeparator() + e.getMessage());
+            //todo в теории везде, где ошибка, надо отчитаться пользователю, но не факт что прямо в этом методе
+        }
+
+        return user;
+    }
+
+    public User deleteUser(Update update) {
+        String report = null;
+        User user = findUser(update);
+        if(user != null){
+            try {
+                user = userer.deleteUser(user);
+                report = "Данные о пользователе удалены." + System.lineSeparator() + user.toString();
+                log.info(report);
+            } catch (Exception e) {
+                report = "Не удалось удалить данные о пользователе.";
+                log.error(report);
+            }
+        } else{
+            report = "Данных о пользователе не найдено.";
+            log.error(report);
+        }
+
+        return user;
+    }
+
+    public User updatePackPassword(Update update, String newPackPassword) {
+        String report = null;
+        User user = findUser(update);
+        if(user != null){
+            try {
+                user = userer.updatePackPassword(user, newPackPassword);
+                report = "Установлен новый пароль для пользователя. " + System.lineSeparator() + user.toString();
+                log.info(report);
+            } catch (Exception e) {
+                report = "Не удалось установить пароль для пользователя.";
+                log.error(report);
+            }
+        } else{
+            report = "Данных о пользователе не найдено.";
+            log.error(report);
+        }
+
+        return user;
+    }
+
+    public User updateOtherMail(Update update, String newOtherMail) {
+        String report = null;
+        User user = findUser(update);
+        if(user != null){
+            try {
+                user = userer.updateOtherMail(user, newOtherMail);
+                report = "Установлен новый 'другой адрес электронной почты (для отправки на него писем)'. " + System.lineSeparator() + user.toString();
+                log.info(report);
+            } catch (Exception e) {
+                report = "Не удалось установить новый 'другой адрес электронной почты (для отправки на него писем)'.";
+                log.error(report);
+            }
+        } else{
+            report = "Данных о пользователе не найдено.";
+            log.error(report);
+        }
+
+        return user;
+    }
+
+
+    //endregion
+
+
+    //region РАБОТА С ЭЛЕКТРОННОЙ ПОЧТОЙ
 
     /**
      * Отправляет письмо с вложением на почту из настроек.
@@ -406,3 +525,4 @@ public class FileManager {
     }
 
 }
+

@@ -1,6 +1,5 @@
 package ru.dogobot.Dogobot.service;
 
-import com.vdurmont.emoji.EmojiParser;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -22,19 +21,20 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import ru.dogobot.Dogobot.config.BotConfig;
-import ru.dogobot.Dogobot.config.JsonData;
 import ru.dogobot.Dogobot.model.FileDir;
 import ru.dogobot.Dogobot.model.User;
-import ru.dogobot.Dogobot.model.UserRepository;
 
 import java.io.*;
-import java.sql.Timestamp;
 import java.util.*;
 
 @Slf4j
 @Service
 public class TelegramBot extends TelegramLongPollingBot {
-    //todo посмотреть модификаторы доступа
+
+    //todo
+    // 1. посмотреть модификаторы доступа
+    // 2. Ругаться если вызвали команду с исп. незаполненных данных
+    // 3. Всю программу проверить на корректность работы с разными пользователями, добавить логи, выводы, обработку исключений, возможно тесты
 
     //region КОНСТАНТЫ и другие исходные данные
     final BotConfig botConfig;
@@ -59,9 +59,32 @@ public class TelegramBot extends TelegramLongPollingBot {
     final List<BotCommand> botMenu;
 
     //нижняя клавиатура по умолчанию (только наименования в таблице)
+    @Getter  @AllArgsConstructor
+    public enum ReplyKeyboardEnum {
+        ROW1_BUTTON1("Домой",   "Показать домашнюю папку"),
+        ROW1_BUTTON2("Помощь",  "Помощь");
+
+        private final String key;
+        private final String description;
+    }
     List<List<String>> replyKeyboardNames = new ArrayList<>(
-            List.of( Arrays.asList("Домой", "Очистить чат") )
+            List.of( Arrays.asList(ReplyKeyboardEnum.ROW1_BUTTON1.key, ReplyKeyboardEnum.ROW1_BUTTON2.key) )
     );
+
+    //другие команды через дробь
+    @Getter  @AllArgsConstructor
+    public enum OtherCommandEnum {
+        GOTO(       "/goto ",       "Перейти в указанную папку"),
+        SETPASS(    "/setpass ",    "Установить новый пароль"),
+        SETMAIL(    "/setmail ",    "Установить новый адрес 'другой электронной почты'"),
+        RENAME(     "/rn ",         "Переименовать папку/файл"),
+        MOVE(       "/mv ",         "Переместить папку/файл"),
+        COPY(       "/cp ",         "Копировать папку/файл"),
+        CMD(        "/cmd ",        "Выполнить консольную команду");
+
+        private final String key;
+        private final String description;
+    }
 
     private long fileDirMenuMessageId;
 
@@ -70,13 +93,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     //region AUTOWIRED and CONSTRUCTORS
 
     @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
     private FileManager fileManager;
-
-    @Autowired
-    private Screenshoter screenshoter;
 
     public TelegramBot(BotConfig botConfig) {
         this.botConfig = botConfig;
@@ -100,6 +117,8 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     //endregion
+
+    //region OVERRIDE TelegramBots + фильтр на владельца
 
     @Override
     public String getBotUsername() {
@@ -135,6 +154,8 @@ public class TelegramBot extends TelegramLongPollingBot {
                 ( update.getCallbackQuery() != null && update.getCallbackQuery().getFrom().getId().equals(ownerId) );
     }
 
+    //endregion
+
     //region Обработчики входной информации
 
     /**
@@ -147,7 +168,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         if (messageText.equals(BotMenuEnum.START.getKey())) {
             commandStartHandler(update);
 
-        } else if (messageText.equals(BotMenuEnum.SHOWHOME.getKey())) {
+        } else if (messageText.equals(BotMenuEnum.SHOWHOME.getKey()) || messageText.equals(ReplyKeyboardEnum.ROW1_BUTTON1.key)) {
             commandShowhomeHandler(update);
 
         } else if (messageText.equals(BotMenuEnum.GOTO.getKey())) {
@@ -162,7 +183,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         } else if (messageText.equals(BotMenuEnum.DELETEDATA.getKey())) {
             commandDeletedataHandler(update);
 
-        } else if (messageText.equals(BotMenuEnum.HELP.getKey())) {
+        } else if (messageText.equals(BotMenuEnum.HELP.getKey()) || messageText.equals(ReplyKeyboardEnum.ROW1_BUTTON2.key)) {
             commandHelpHandler(update);
 
         } else if (messageText.equals(BotMenuEnum.SETTINGS.getKey())) {
@@ -176,31 +197,41 @@ public class TelegramBot extends TelegramLongPollingBot {
 
         } else {
             //варианты с дробью, но с аргументами
-            if ( update.getMessage().getText().substring(0, 6).equals("/goto ") ) {
+            if ( isCommand(update, OtherCommandEnum.GOTO) ) {
                 commandGotoArgsHandler(update);
 
-            } else if ( update.getMessage().getText().substring(0, 10).equals("/set_pass ") ){
+            } else if ( isCommand(update, OtherCommandEnum.SETPASS) ) {
                 commandSetPassHandler(update);
 
-            } else if ( update.getMessage().getText().substring(0, 10).equals("/set_mail ") ){
+            } else if ( isCommand(update, OtherCommandEnum.SETMAIL) ) {
                 commandSetMailHandler(update);
 
-            } else if ( update.getMessage().getText().substring(0, 4).equals("/rn ") ) {
+            } else if ( isCommand(update, OtherCommandEnum.RENAME) ) {
                 commandRenameHandler(update);
 
-            } else if ( update.getMessage().getText().substring(0, 4).equals("/mv ") ) {
+            } else if ( isCommand(update, OtherCommandEnum.MOVE) ) {
                 commandMoveHandler(update);
 
-            } else if ( update.getMessage().getText().substring(0, 4).equals("/cp ") ) {
+            } else if ( isCommand(update, OtherCommandEnum.COPY) ) {
                 commandCopyHandler(update);
 
-            } else if ( update.getMessage().getText().substring(0, 5).equals("/cmd ") ) {
+            } else if ( isCommand(update, OtherCommandEnum.CMD) ) {
                 commandCMDHandler(update);
 
             } else {
                 commandOrElseHandler(update);
             }
         }
+    }
+    /**
+     * Проверяет, является ли сообщение командой из списка других команд
+     * @param update объект обновления
+     * @param command команда для проверки - введенный пользователем текст
+     * @return true - команда из списка других команд
+     */
+    boolean isCommand(Update update, OtherCommandEnum command){
+        if (update.getMessage().getText().length() < command.key.length()) return false;
+        return update.getMessage().getText().startsWith(command.key);
     }
 
     /**
@@ -266,7 +297,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         //если нажали на кнопку "Получить на почту"
         if (callbackData.equals(FileManager.FileDirMenu.GET_ON_EMAIL.getButtonCallback())){
             if (fileManager.getFileDir().getFdType().equals(FileDir.FDType.FILE)) {
-                fileManager.sendEmailWithAttachment(fileManager.getFileDir());
+                fileManager.sendEmailWithAttachment(fileManager.getFileDir(), fileManager.findUser(update).getPersonalEmail());
                 sendMessageWithoutKeyboard(
                         chatId,
                         "'%s' отправлен на почту".formatted(fileManager.getFileDir().getFdPath())
@@ -284,7 +315,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         //если нажали на кнопку "Отправить на почту"
         if (callbackData.equals(FileManager.FileDirMenu.SEND_TO_EMAIL.getButtonCallback())){
             if (fileManager.getFileDir().getFdType().equals(FileDir.FDType.FILE)) {
-                fileManager.sendEmailWithAttachment(fileManager.getFileDir(), "dogobot@bk.ru"); //todo достать из настроек пользователя
+                fileManager.sendEmailWithAttachment(fileManager.getFileDir(), fileManager.findUser(update).getOtherEmail());
                 sendMessageWithoutKeyboard(
                         chatId,
                         "'%s' отправлен на почту из настроек".formatted(fileManager.getFileDir().getFdPath())
@@ -313,7 +344,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         if (callbackData.equals(FileManager.FileDirMenu.PACK_WITH_PASSWORD.getButtonCallback())){
             fileManager.zipFileDirWithPassword(
                     fileManager.getFileDir(),
-                    "111"   //todo достать из настроек пользователя
+                    fileManager.findUser(update).getPackPassword()
             );
             sendMessageWithoutKeyboard(chatId, "Папка успешно сжата в архив с установкой пароля.");
             deleteMessageWithFileDirMenu(chatId);
@@ -334,7 +365,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         if (callbackData.equals(FileManager.FileDirMenu.UNPACK_WITH_PASSWORD.getButtonCallback())){
             fileManager.unzipFileDirWithPassword(
                     fileManager.getFileDir(),
-                    "111"   //todo достать из настроек пользователя
+                    fileManager.findUser(update).getPackPassword()
             );
             sendMessageWithoutKeyboard(chatId, "Архив успешно распакован с паролем.");
             deleteMessageWithFileDirMenu(chatId);
@@ -343,21 +374,21 @@ public class TelegramBot extends TelegramLongPollingBot {
 
         //если нажали на кнопку "Переименовать"
         if (callbackData.equals(FileManager.FileDirMenu.RENAME.getButtonCallback())){
-            sendMessageWithoutKeyboard(chatId, "Для переименования текущего файла/папки введите команду (без кавычек и фигурных скобок) в формате '/rn {новое имя}'");
+            sendMessageWithoutKeyboard(chatId, "Для переименования текущего файла/папки введите команду (без кавычек и фигурных скобок) в формате '" + OtherCommandEnum.RENAME.key + " {новое имя}'");
             deleteMessageWithFileDirMenu(chatId);
             return;
         }
 
         //если нажали кнопку "Переместить"
         if (callbackData.equals(FileManager.FileDirMenu.MOVE.getButtonCallback())){
-            sendMessageWithoutKeyboard(chatId, "Для перемещения текущего файла/папки введите команду (без кавычек и фигурных скобок) в формате '/mv {новый путь к папке для перемещения}'");
+            sendMessageWithoutKeyboard(chatId, "Для перемещения текущего файла/папки введите команду (без кавычек и фигурных скобок) в формате '" + OtherCommandEnum.MOVE.key + " {новый путь к папке для перемещения}'");
             deleteMessageWithFileDirMenu(chatId);
             return;
         }
 
         //если нажали кнопку "Копировать"
         if (callbackData.equals(FileManager.FileDirMenu.COPY.getButtonCallback())){
-            sendMessageWithoutKeyboard(chatId, "Для копирования текущего файла/папки введите команду (без кавычек и фигурных скобок) в формате '/cp {новый путь к папке для копирования}'");
+            sendMessageWithoutKeyboard(chatId, "Для копирования текущего файла/папки введите команду (без кавычек и фигурных скобок) в формате '" + OtherCommandEnum.COPY.key + " {новый путь к папке для копирования}'");
             deleteMessageWithFileDirMenu(chatId);
             return;
         }
@@ -378,7 +409,9 @@ public class TelegramBot extends TelegramLongPollingBot {
             return;
         }
 
-        log.error("Не могу распознать нажатую кнопку: " + callbackData);
+        String report = "Не могу распознать нажатую кнопку " + callbackData;
+        log.error(report + callbackData);
+        sendMessageWithoutKeyboard(chatId, report);
     }
 
     //endregion
@@ -390,38 +423,9 @@ public class TelegramBot extends TelegramLongPollingBot {
      * @param update объект обновления
      */
     private void commandStartHandler(Update update) {
-        User user = registerOrGetUser(update);
-
-        String smileBlush = EmojiParser.parseToUnicode(":blush:");
-        String report = "Привет, %s, поздравляю с регистрацией в сервисе!%s"
-                .formatted(user.getFirstName(), smileBlush);
-        sendMessageWithReplyKeyboard(user.getChatId(), report);
-        log.info("Пользователь %s. Команда START. Выполнено.".formatted(user.getFirstName()));
-    }
-    /**
-     * Проверяет, зарегистрирован ли пользователь, если нет, то регистрирует
-     * @param update объект обновления
-     * @return зарегистрированного пользователя
-     */
-    private User registerOrGetUser(Update update) {
-        User user = new User();
-        var message = update.getMessage();
-        if(userRepository.findById(message.getChatId()).isEmpty()){
-            user.setChatId(message.getFrom().getId());
-            user.setFirstName(message.getChat().getFirstName());
-            user.setLastName(message.getChat().getLastName());
-            user.setUserName(message.getChat().getUserName());
-            user.setRegisteredAt(new Timestamp(System.currentTimeMillis()));
-            user.setPackPassword("1111");//user.getUserDefaultConfig().getPackPassword());
-
-            userRepository.save(user);
-            log.info("В БД сохранен новый пользователь: " + user);
-        }
-        else {
-            user = userRepository.findById(message.getChatId()).get();
-            log.info("Пользователь %s уже зарегистрирован".formatted(message.getChatId()));
-        }
-        return user;
+        long chatId = update.getMessage().getChatId();
+        String report = fileManager.findUserOrRegister(update);
+        sendMessageWithReplyKeyboard(chatId, report);
     }
 
     /**
@@ -430,7 +434,7 @@ public class TelegramBot extends TelegramLongPollingBot {
      */
     private void commandShowhomeHandler(Update update) {
         long chatId = update.getMessage().getChatId();
-        final String HOME_PATH = System.getProperty("user.home") + "/forTest";
+        final String HOME_PATH = System.getProperty("user.home") + "/forTest";  //todo УБРАТЬ ПЕРЕД ФИНАЛОМ
         FileDir fileDir = fileManager.getFileDirWithScan(HOME_PATH);
         sendMessageWithInlineKeyboard(
                 chatId,
@@ -447,7 +451,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         long chatId = update.getMessage().getChatId();
         sendMessageWithoutKeyboard(
                 chatId,
-                "Для того, чтоб напрямую перейти по адресу, введите команду (без кавычек и фигурных скобок) в формате '/goto {путь для перехода}'"
+                "Для того, чтоб напрямую перейти по адресу, введите команду (без кавычек и фигурных скобок) в формате '" + OtherCommandEnum.GOTO.key + " {путь для перехода}'"
         );
     }
 
@@ -457,7 +461,7 @@ public class TelegramBot extends TelegramLongPollingBot {
      */
     private void commandGotoArgsHandler(Update update) {
         long chatId = update.getMessage().getChatId();
-        String targetPath = update.getMessage().getText().substring("/goto ".length());
+        String targetPath = update.getMessage().getText().substring(OtherCommandEnum.GOTO.key.length());
         FileDir fileDir = fileManager.getFileDirWithScan(targetPath);
         sendMessageWithInlineKeyboard(
                 chatId,
@@ -471,7 +475,16 @@ public class TelegramBot extends TelegramLongPollingBot {
      * @param update объект обновления
      */
     private void commandSetPassHandler(Update update) {
-        //todo доделать этот метод
+        long chatId = update.getMessage().getChatId();
+        User user = fileManager.updatePackPassword(
+                update,
+                update.getMessage().getText().substring(OtherCommandEnum.SETPASS.key.length())
+        );
+        sendMessageWithoutKeyboard(
+                chatId,
+                "Произведена попытка смены пароля (упаковки/распаковки)." + System.lineSeparator()
+                        + user.toString()
+        );
     }
 
     /**
@@ -479,7 +492,16 @@ public class TelegramBot extends TelegramLongPollingBot {
      * @param update объект обновления
      */
     private void commandSetMailHandler(Update update) {
-        //todo доделать этот метод
+        long chatId = update.getMessage().getChatId();
+        User user = fileManager.updateOtherMail(
+                update,
+                update.getMessage().getText().substring(OtherCommandEnum.SETMAIL.key.length())
+        );
+        sendMessageWithoutKeyboard(
+                chatId,
+                "Произведена попытка смены другого адреса электронной почты (для отправки на неё писем)." + System.lineSeparator()
+                        + user.toString()
+        );
     }
 
     /**
@@ -487,8 +509,7 @@ public class TelegramBot extends TelegramLongPollingBot {
      * @param update объект обновления
      */
     private void commandScreenshotHandler(Update update) {
-        //сделать скриншот экрана
-        String screenPath = screenshoter.take();
+        String screenPath = fileManager.getScreenshoter().take();
         sendFile(update.getMessage().getChatId(), screenPath);
     }
 
@@ -497,16 +518,14 @@ public class TelegramBot extends TelegramLongPollingBot {
      * @param update объект обновления
      */
     private void commandMydataHandler(Update update) {
-        String report = null;
-        User user = new User();
-        var message = update.getMessage();
-        if(userRepository.findById(message.getChatId()).isEmpty()){
-            report = "Пользователь не зарегистрирован, данных нет.";
-        }
-        else {
-            user = userRepository.findById(message.getChatId()).get();
+        String report;
+        User user = fileManager.findUser(update);
+        if(user != null){
             report = user.toString();
+        } else{
+            report = "Данных о пользователе не найдено.";
         }
+        //todo в отправках сделать проверку на null и т.п.
         sendMessageWithoutKeyboard(user.getChatId(), report);
     }
 
@@ -515,45 +534,34 @@ public class TelegramBot extends TelegramLongPollingBot {
      * @param update объект обновления
      */
     private void commandDeletedataHandler(Update update) {
-        String report = null;
-        User user = new User();
-        var message = update.getMessage();
-        if(userRepository.findById(message.getChatId()).isEmpty()){
-            report = "Данных о пользователе не найдено.";
-        }
-        else {
-            user = userRepository.findById(message.getChatId()).get();
-            userRepository.delete(user);
-            report = "Данные о пользователе удалены.";
-        }
+        User user = fileManager.deleteUser(update);
         //todo добавить полную очистку чата и оставить кнопку /start
-        sendMessageWithoutKeyboard(user.getChatId(), report);
+        sendMessageWithoutKeyboard(user.getChatId(), "Пользователь удален. " + System.lineSeparator() + user);
     }
 
     private void commandHelpHandler(Update update) {
         //todo доделать этот метод
+        sendMessageWithoutKeyboard(update.getMessage().getChatId(), "Инструкция пока пишется.");
     }
 
     private void commandSettingsHandler(Update update) {
-        //todo
-        // 1. Заменить литералы на значения из источников
-        // 2. Создать команды для изменения пароля и другой почты /set_pass и /set_mail
-        // 3. Ругаться если вызвали команду с исп. незаполненных данных
-        // 4. Всю программу проверить на корректность работы с разными пользователями, добавить логи, выводы, обработку исключений, возможно тесты
-
+        User user = fileManager.findUser(update);
         String sep = System.lineSeparator();
-        StringBuilder report = new StringBuilder();
-        report.append("Личные настройки:").append(sep);
-        report.append("---").append(sep);
-        report.append("Пароль (упаковка, распаковка и т.п.): ").append("111").append(sep);
-        report.append("Для изменения пароля введите команду (без кавычек и фигурных скобок) в формате '/set_pass {новый пароль}'. Например: /set_pass 111").append(sep);
-        report.append("---").append(sep);
-        report.append("Личная почта (для получения на неё писем): ").append("111").append(sep);
-        report.append("Личную почту вместе с остальными настройками (логин, пароль, вход./исходящ. серверы и порты) можно поменять только на устройстве, где запущен бот.").append(sep);
-        report.append("---").append(sep);
-        report.append("Другая почта (для отправки на неё писем): ").append("111").append(sep);
-        report.append("Для изменения другой почты (для отправки на неё писем) введите команду (без кавычек и фигурных скобок) в формате '/set_mail {новый адрес другой почты}'. Например: /set_mail mynew@other.mail").append(sep);
-        sendMessageWithoutKeyboard(update.getMessage().getChatId(), report.toString());
+        String report = "Личные настройки:" + sep +
+                "---" + sep +
+                "Пароль (упаковка, распаковка и т.п.): " + user.getPackPassword() + sep +
+                "Для изменения пароля введите команду (без кавычек и фигурных скобок)" + sep +
+                "в формате: '" + OtherCommandEnum.SETPASS.key + " {новый пароль}'." + sep +
+                "Например: " + OtherCommandEnum.SETPASS.key + " 1111" + sep +
+                "---" + sep +
+                "Личная почта (для получения на неё писем): " + user.getPersonalEmail() + sep +
+                "Личную почту вместе с остальными настройками (логин, пароль, вход./исходящ. серверы и порты) можно поменять только на устройстве, где запущен бот." + sep +
+                "---" + sep +
+                "Другая почта (для отправки на неё писем): " + user.getOtherEmail() + sep +
+                "Для изменения другой почты (для отправки на неё писем) введите команду (без кавычек и фигурных скобок)" + sep +
+                "в формате '" + OtherCommandEnum.SETMAIL.key + " {новый адрес другой почты}'." + sep +
+                "Например: " + OtherCommandEnum.SETMAIL.key + " mynew@other.mail" + sep;
+        sendMessageWithoutKeyboard(update.getMessage().getChatId(), report);
     }
 
     /**
@@ -580,7 +588,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         long chatId = update.getMessage().getChatId();
         String report = fileManager.fileDirRename(
                 fileManager.getFileDir(),
-                update.getMessage().getText().substring("/rn ".length())
+                update.getMessage().getText().substring(OtherCommandEnum.RENAME.key.length())
         );
         sendMessageWithoutKeyboard(chatId, report);
     }
@@ -589,7 +597,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         long chatId = update.getMessage().getChatId();
         String report = fileManager.fileDirMove(
                 fileManager.getFileDir(),
-                update.getMessage().getText().substring("/mv ".length())
+                update.getMessage().getText().substring(OtherCommandEnum.MOVE.key.length())
         );
         sendMessageWithoutKeyboard(chatId, report);
     }
@@ -598,7 +606,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         long chatId = update.getMessage().getChatId();
         String report = fileManager.fileDirCopy(
                 fileManager.getFileDir(),
-                update.getMessage().getText().substring("/cp ".length())
+                update.getMessage().getText().substring(OtherCommandEnum.COPY.key.length())
         );
         sendMessageWithoutKeyboard(chatId, report);
     }
@@ -606,8 +614,8 @@ public class TelegramBot extends TelegramLongPollingBot {
     private void commandCMDHandler(Update update) {
         long chatId = update.getMessage().getChatId();
         String report = fileManager.terminalExecute(
-                update.getMessage().getText().substring("/cmd ".length())
-        );// commandRNHandler
+                update.getMessage().getText().substring(OtherCommandEnum.CMD.key.length())
+        );
         sendMessageWithoutKeyboard(chatId, report);
     }
 
@@ -618,7 +626,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     private void commandOrElseHandler(Update update) {
         //todo доделать этот метод
         long chatId = update.getMessage().getChatId();
-        sendMessageWithoutKeyboard(chatId, "Непонятно что делать с командой: " + update.getMessage().getText());
+        sendMessageWithoutKeyboard(chatId, "Мне неизвестно что делать с командой: " + update.getMessage().getText());
     }
 
     //endregion
@@ -818,11 +826,12 @@ public class TelegramBot extends TelegramLongPollingBot {
     private InlineKeyboardMarkup getInlineKeyboardMarkup(FileManager.FileDirMenu[] fileDirMenuSortedCallbacks) {
         InlineKeyboardMarkup iKeyboard = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> iRows = new ArrayList<>();
-        for (int i = 0; i < fileDirMenuSortedCallbacks.length; i++) {
+
+        for (FileManager.FileDirMenu fileDirMenuSortedCallback : fileDirMenuSortedCallbacks) {
             List<InlineKeyboardButton> iRow = new ArrayList<>();
             InlineKeyboardButton iButton = new InlineKeyboardButton();
-            iButton.setText(fileDirMenuSortedCallbacks[i].getButtonText());
-            iButton.setCallbackData(fileDirMenuSortedCallbacks[i].getButtonCallback());
+            iButton.setText(fileDirMenuSortedCallback.getButtonText());
+            iButton.setCallbackData(fileDirMenuSortedCallback.getButtonCallback());
             iRow.add(iButton);
             iRows.add(iRow);
         }
