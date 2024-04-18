@@ -1,5 +1,6 @@
 package ru.dogobot.Dogobot.service;
 
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.lingala.zip4j.ZipFile;
 import net.lingala.zip4j.model.ZipParameters;

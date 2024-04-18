@@ -292,8 +292,8 @@ public class FileManager {
         user.setLastName(message.getChat().getLastName());
         user.setUserName(message.getChat().getUserName());
         user.setRegisteredAt(new Timestamp(System.currentTimeMillis()));
-        user.setPackPassword(userer.getPackPasswordDefault());
-        user.setPersonalEmail(emailConfig.getEmail());
+        user.setPackPassword(userer.getUserConfig().getPackPassword());
+        user.setPersonalEmail(emailConfig.getEmailFrom());
         return user;
     }
 
@@ -317,11 +317,14 @@ public class FileManager {
         User user = null;
 
         try {
-            user = userer.findUserById(update.getMessage().getChatId());
+            if (update.getMessage() != null)
+                user = userer.findUserById(update.getMessage().getChatId());
+            if (update.getCallbackQuery() != null)
+                user = userer.findUserById(update.getCallbackQuery().getFrom().getId());
             report = "Данные о пользователе найдены " + smileBlush;
             log.info(report + System.lineSeparator() + user);
         } catch (Exception e) {
-            report = "Не удалось получить данные о пользователе. Возможно пользователь не зарегистрирован.";
+            report = "Не удалось получить данные о пользователе с id: " + update.getMessage().getChatId() + ". Возможно пользователь не зарегистрирован.";
             log.error(report + System.lineSeparator() + e.getMessage());
         }
 

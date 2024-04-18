@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import ru.dogobot.Dogobot.config.JsonData;
+import ru.dogobot.Dogobot.config.UserConfig;
 import ru.dogobot.Dogobot.model.User;
 import ru.dogobot.Dogobot.model.UserRepository;
 
@@ -19,18 +19,11 @@ public class Userer {
 
     @Autowired
     private UserRepository userRepository;
-    
-    private String packPasswordDefault;
 
-    @Autowired
-    public Userer(JsonData jsonData) {
-        jsonData.setSettings(jsonData.updateSettings("DOGOBOT11"));
-        try {
-            this.packPasswordDefault = jsonData.getSettings().get("DOGOBOT11");
-        }
-        catch (Exception e) {
-            log.error("Не получается получить данные по умолчанию для пользователя." + System.lineSeparator() + e.getMessage());
-        }
+    private UserConfig userConfig;
+
+    public Userer(UserConfig userConfig) {
+        this.userConfig = userConfig;
     }
 
     protected User findUserById(Long chatId) throws NoSuchElementException {

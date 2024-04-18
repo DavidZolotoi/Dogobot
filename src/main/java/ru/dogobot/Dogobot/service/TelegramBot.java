@@ -344,7 +344,8 @@ public class TelegramBot extends TelegramLongPollingBot {
         if (callbackData.equals(FileManager.FileDirMenu.PACK_WITH_PASSWORD.getButtonCallback())){
             fileManager.zipFileDirWithPassword(
                     fileManager.getFileDir(),
-                    fileManager.findUser(update).getPackPassword()
+                    //todo переделать
+                    fileManager.userer.getUserConfig().getPackPassword()//findUser(update).getPackPassword()
             );
             sendMessageWithoutKeyboard(chatId, "Папка успешно сжата в архив с установкой пароля.");
             deleteMessageWithFileDirMenu(chatId);

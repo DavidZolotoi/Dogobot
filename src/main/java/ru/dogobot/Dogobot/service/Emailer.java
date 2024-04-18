@@ -34,9 +34,9 @@ public class Emailer {
         MultiPartEmail email = new MultiPartEmail();
         email.setHostName(emailConfig.getSmtpHost());
         email.setSmtpPort(emailConfig.getSmtpPort());
-        email.setAuthenticator(new DefaultAuthenticator(emailConfig.getEmail(), emailConfig.getPassword()));
+        email.setAuthenticator(new DefaultAuthenticator(emailConfig.getEmailFrom(), emailConfig.getPassword()));
         email.setSSLOnConnect(true);
-        email.setFrom(emailConfig.getEmail());
+        email.setFrom(emailConfig.getEmailFrom());
         email.addTo(recipient);
         email.setSubject(subject);
         email.setMsg(body);
@@ -55,9 +55,9 @@ public class Emailer {
         MultiPartEmail email = new MultiPartEmail();
         email.setHostName(emailConfig.getSmtpHost());
         email.setSmtpPort(emailConfig.getSmtpPort());
-        email.setAuthenticator(new DefaultAuthenticator(emailConfig.getEmail(), emailConfig.getPassword()));
+        email.setAuthenticator(new DefaultAuthenticator(emailConfig.getEmailFrom(), emailConfig.getPassword()));
         email.setSSLOnConnect(true);
-        email.setFrom(emailConfig.getEmail());
+        email.setFrom(emailConfig.getEmailFrom());
         email.addTo(recipient);
         email.setSubject(subject);
         email.setMsg(body);
@@ -88,7 +88,7 @@ public class Emailer {
 
         // Создание хранилища
         Store store = session.getStore("imaps");
-        store.connect(this.emailConfig.getImapHost(), this.emailConfig.getEmail(), this.emailConfig.getPassword());
+        store.connect(this.emailConfig.getImapHost(), this.emailConfig.getEmailFrom(), this.emailConfig.getPassword());
 
         // Открытие папки входящих сообщений
         Folder inbox = store.getFolder("INBOX");

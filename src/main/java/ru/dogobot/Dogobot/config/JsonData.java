@@ -19,7 +19,7 @@ import java.util.Map;
 @Getter
 @Configuration
 public class JsonData {
-    final String filePath = "../.hidden/.hidden";
+    final String filePath = "../.hidden/.hidden5.json";
 
     private Map<String, String> settings;
 
