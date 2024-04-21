@@ -33,11 +33,11 @@ public class Jsoner {
             JSONObject jsonObject = new JSONObject(tokener);
             jsonValue = jsonObject.getString(jsonKey);
         } catch (FileNotFoundException e) {
-            log.error("Файл не найден: " + filePath + System.lineSeparator() + e.getMessage());
+            log.warn("Файл не найден: " + filePath + System.lineSeparator() + e.getMessage());
         } catch (JSONException e) {
-            log.error("Ошибка при распознавании JSON. Ключ: " + jsonKey + System.lineSeparator() + e.getMessage());
+            log.warn("Ошибка при распознавании JSON. Ключ: " + jsonKey + System.lineSeparator() + e.getMessage());
         } catch (IOException e) {
-            log.error("Проблема с вводом-выводом при чтении файла: " + filePath + System.lineSeparator() + e.getMessage());
+            log.warn("Проблема с вводом-выводом при чтении файла: " + filePath + System.lineSeparator() + e.getMessage());
         }
         return jsonValue;
     }
@@ -46,10 +46,13 @@ public class Jsoner {
      * Изменяет (добавляет, в случае отсутствия) значение по ключу в JSON-файле.
      * @param jsonKey ключ, по которому необходимо изменить значение
      * @param jsonValue новое значение
+     * @return результат изменения
      */
-    public void updateValueJSONFile(String filePath, int indentFactor, String jsonKey, String jsonValue) {
+    public boolean updateValueJSONFile(String filePath, int indentFactor, String jsonKey, String jsonValue) {
+        boolean result = false;
         try {
             JSONObject jsonObject;
+
             try (FileReader reader = new FileReader(filePath)) {
                 JSONTokener tokener = new JSONTokener(reader);
                 jsonObject = new JSONObject(tokener);
@@ -60,6 +63,7 @@ public class Jsoner {
                 writer.write(jsonObject.toString(indentFactor));
             }
 
+            result = true;
         } catch (FileNotFoundException e) {
             log.error("Файл не найден: " + filePath + System.lineSeparator() + e.getMessage());
         } catch (JSONException e) {
@@ -67,6 +71,8 @@ public class Jsoner {
         } catch (IOException e) {
             log.error("Проблема с вводом-выводом при изменении файла: " + filePath + System.lineSeparator() + e.getMessage());
         }
+
+        return result;
     }
 
 }

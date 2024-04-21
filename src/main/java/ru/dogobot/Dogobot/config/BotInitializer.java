@@ -17,14 +17,19 @@ public class BotInitializer {
     @Autowired
     TelegramBot bot;
 
+    /**
+     * Инициализация бота при запуске
+     * @throws TelegramApiException если возникли проблемы
+     */
     @EventListener({ContextRefreshedEvent.class})
     public void init() throws TelegramApiException {
         TelegramBotsApi telegramBotsApi = new TelegramBotsApi(DefaultBotSession.class);
         try {
             telegramBotsApi.registerBot(bot);
+            log.info("Бот успешно инициализирован");
         }
         catch (TelegramApiException e) {
-            log.error("Error occurred: " + e.getMessage());
+            log.error("Проблемы при инициализации бота: " + e.getMessage());
         }
     }
 }

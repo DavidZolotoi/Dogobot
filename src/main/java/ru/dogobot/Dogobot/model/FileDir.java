@@ -15,6 +15,7 @@ import java.util.List;
 @Data
 @Component
 public class FileDir {
+
     @Getter
     @AllArgsConstructor
     public enum FDType {

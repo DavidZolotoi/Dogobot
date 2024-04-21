@@ -8,7 +8,6 @@ import org.apache.commons.mail.EmailException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.objects.Update;
-import ru.dogobot.Dogobot.config.EmailConfig;
 import ru.dogobot.Dogobot.model.FileDir;
 import ru.dogobot.Dogobot.model.User;
 
@@ -57,8 +56,6 @@ public class FileManager {
 
     @Autowired
     Emailer emailer;
-    @Autowired
-    EmailConfig emailConfig;
 
     @Autowired
     Archiver archiver;
@@ -103,6 +100,7 @@ public class FileManager {
         fileDir.setFdDate( getPropertyFdDate(fileDir) );
         fileDir.setFdSize( getPropertyFdLength(fileDir) );
         fileDir.setFdArray( getPropertyFdSortArray(fileDir) );
+
         return fileDir;
     }
 
@@ -284,20 +282,6 @@ public class FileManager {
 
     //region РАБОТА С ПОЛЬЗОВАТЕЛЯМИ
 
-    public User createUserFromUpdateWithoutDB(Update update) {
-        User user = new User();
-        var message = update.getMessage();
-        user.setChatId(message.getFrom().getId());
-        user.setFirstName(message.getChat().getFirstName());
-        user.setLastName(message.getChat().getLastName());
-        user.setUserName(message.getChat().getUserName());
-        user.setRegisteredAt(new Timestamp(System.currentTimeMillis()));
-        user.setPackPassword(userer.getUserConfig().getPackPassword());
-        user.setPersonalEmail(userer.getUserConfig().getPersonalEmail());
-        user.setOtherEmail(userer.getUserConfig().getOtherEmail());
-        return user;
-    }
-
     public String findUserOrRegister(Update update) {
         String smileBlush = EmojiParser.parseToUnicode(":blush:");
         String report = null;
@@ -305,7 +289,7 @@ public class FileManager {
         if(findUser(update) != null){
             report = "Данные о пользователе найдены. Вы можете проверить их корректность вызвав соответствующую команду из меню" + smileBlush;
         } else{
-            registerUser(update);
+            createAndRegisterUser(update);
             report = "Пользователь успешно зарегистрирован!" + smileBlush;
         }
 
@@ -332,13 +316,24 @@ public class FileManager {
         return user;
     }
 
-    public User registerUser(Update update) {
+    public User createAndRegisterUser(Update update) {
         String smileBlush = EmojiParser.parseToUnicode(":blush:");
         String report = null;
-        User user = null;
+        var message = update.getMessage();
+
+        User user = new User(
+                message.getFrom().getId(),
+                message.getChat().getFirstName(),
+                message.getChat().getLastName(),
+                message.getChat().getUserName(),
+                new Timestamp(System.currentTimeMillis()),
+                userer.getUserConfig().getPackPassword(),
+                userer.getUserConfig().getPersonalEmail(),
+                userer.getUserConfig().getOtherEmail()
+        );
 
         try {
-            user = userer.registerUser(createUserFromUpdateWithoutDB(update));
+            user = userer.registerUser(user);
             report = "Пользователь успешно зарегистрирован!" + smileBlush;
             log.info(report + System.lineSeparator() + user);
         } catch (Exception e) {
@@ -370,61 +365,67 @@ public class FileManager {
         return user;
     }
 
+    /**
+     * Обновляет пароль упаковки/распаковки
+     * @param update объект обновления
+     * @param newPackPassword новый пароль
+     * @return пользователь с обновленным паролем
+     */
     public User updatePackPassword(Update update, String newPackPassword) {
-        String report = null;
         User user = findUser(update);
         if(user != null){
             try {
                 user = userer.updatePackPassword(user, newPackPassword);
-                report = "Установлен новый пароль для пользователя. " + System.lineSeparator() + user.toString();
-                log.info(report);
+                log.info("Попытка обновления пароля упаковки/распаковки для пользователя прошла без исключений. " + System.lineSeparator() + user.toString());
             } catch (Exception e) {
-                report = "Не удалось установить пароль для пользователя.";
-                log.error(report);
+                log.error("При попытке обновления пароля упаковки/распаковки для пользователя возникло исключение. " + System.lineSeparator() + e.getMessage());
             }
         } else{
-            report = "Данных о пользователе не найдено.";
-            log.error(report);
+            log.error("Данных о пользователе не найдено.");
         }
 
         return user;
     }
 
+    /**
+     * Обновляет персональный адрес электронной почты
+     * @param update объект обновления
+     * @param newPersonalMail новый персональный адрес
+     * @return пользователь с обновленным персональным адресом
+     */
     public User updatePersonalMail(Update update, String newPersonalMail) {
-        String report = null;
         User user = findUser(update);
         if(user != null){
             try {
                 user = userer.updatePersonalEmail(user, newPersonalMail);
-                report = "Установлен новый 'персональный адрес электронной почты (для получения на него писем)'. " + System.lineSeparator() + user.toString();
-                log.info(report);
+                log.info("Попытка обновления персонального адреса электронной почты для пользователя прошла без исключений. " + System.lineSeparator() + user.toString());
             } catch (Exception e) {
-                report = "Не удалось установить новый 'персональный адрес электронной почты (для получения на него писем)'.";
-                log.error(report);
+                log.error("При попытке обновления персонального адреса электронной почты для пользователя возникло исключение. " + System.lineSeparator() + e.getMessage());
             }
         } else{
-            report = "Данных о пользователе не найдено.";
-            log.error(report);
+            log.error("Данных о пользователе не найдено.");
         }
 
         return user;
     }
 
+    /**
+     * Обновляет другой адрес электронной почты
+     * @param update объект обновления
+     * @param newOtherMail новый другой адрес
+     * @return пользователь с обновленным другой адрес
+     */
     public User updateOtherMail(Update update, String newOtherMail) {
-        String report = null;
         User user = findUser(update);
         if(user != null){
             try {
                 user = userer.updateOtherEmail(user, newOtherMail);
-                report = "Установлен новый 'другой адрес электронной почты (для отправки на него писем)'. " + System.lineSeparator() + user.toString();
-                log.info(report);
+                log.info("Попытка обновления другого адреса электронной почты для пользователя прошла без исключений. " + System.lineSeparator() + user.toString());
             } catch (Exception e) {
-                report = "Не удалось установить новый 'другой адрес электронной почты (для отправки на него писем)'.";
-                log.error(report);
+                log.error("При попытке обновления другого адреса электронной почты для пользователя возникло исключение. " + System.lineSeparator() + e.getMessage());
             }
         } else{
-            report = "Данных о пользователе не найдено.";
-            log.error(report);
+            log.error("Данных о пользователе не найдено.");
         }
 
         return user;

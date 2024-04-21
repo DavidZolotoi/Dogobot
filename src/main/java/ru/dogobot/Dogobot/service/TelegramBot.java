@@ -32,7 +32,7 @@ import java.util.*;
 public class TelegramBot extends TelegramLongPollingBot {
 
     //todo
-    // 1. посмотреть модификаторы доступа
+    // 1. Посмотреть модификаторы доступа
     // 2. Ругаться если вызвали команду с исп. незаполненных данных
     // 3. Всю программу проверить на корректность работы с разными пользователями, добавить логи, выводы, обработку исключений, возможно тесты
 
@@ -487,8 +487,9 @@ public class TelegramBot extends TelegramLongPollingBot {
         );
         sendMessageWithoutKeyboard(
                 chatId,
-                "Произведена попытка смены пароля (упаковки/распаковки)." + System.lineSeparator()
-                        + user.toString()
+                "Произведена попытка смены пароля (упаковки/распаковки)."
+                        + System.lineSeparator()
+                        + "Актуальный пароль: " + user.getPackPassword()
         );
     }
 
@@ -504,8 +505,9 @@ public class TelegramBot extends TelegramLongPollingBot {
         );
         sendMessageWithoutKeyboard(
                 chatId,
-                "Произведена попытка смены персонального адреса электронной почты (для получения на неё писем)." + System.lineSeparator()
-                        + user.toString()
+                "Произведена попытка смены персонального адреса электронной почты (для получения на неё писем)."
+                        + System.lineSeparator()
+                        + "Актуальный адрес: " + user.getPersonalEmail()
         );
     }
 
@@ -521,8 +523,9 @@ public class TelegramBot extends TelegramLongPollingBot {
         );
         sendMessageWithoutKeyboard(
                 chatId,
-                "Произведена попытка смены другого адреса электронной почты (для отправки на неё писем)." + System.lineSeparator()
-                        + user.toString()
+                "Произведена попытка смены другого адреса электронной почты (для отправки на неё писем)."
+                        + System.lineSeparator()
+                        + "Актуальный адрес: " + user.getOtherEmail()
         );
     }
 
@@ -577,7 +580,9 @@ public class TelegramBot extends TelegramLongPollingBot {
                 "Например: " + OtherCommandEnum.SETPASS.key + " 1111" + sep +
                 "---" + sep +
                 "Личная почта (для получения на неё писем): " + user.getPersonalEmail() + sep +
-                "Личную почту вместе с остальными настройками (логин, пароль, вход./исходящ. серверы и порты) можно поменять только на устройстве, где запущен бот." + sep +
+                "Для изменения личной почты (для получения на неё писем) введите команду (без кавычек и фигурных скобок)" + sep +
+                "в формате '" + OtherCommandEnum.SETPMAIL.key + " {новый адрес личной почты}'." + sep +
+                "Например: " + OtherCommandEnum.SETPMAIL.key + " mynew@personal.mail" + sep +
                 "---" + sep +
                 "Другая почта (для отправки на неё писем): " + user.getOtherEmail() + sep +
                 "Для изменения другой почты (для отправки на неё писем) введите команду (без кавычек и фигурных скобок)" + sep +

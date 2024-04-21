@@ -39,6 +39,28 @@ public class User {
     @Column(name = "other_email")
     private String otherEmail;
 
+    public User() {
+    }
+    public User(
+            Long id,
+            String firstName,
+            String lastName,
+            String userName,
+            Timestamp timestamp,
+            String packPassword,
+            String personalEmail,
+            String otherEmail
+    ) {
+        this.chatId = id;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.userName = userName;
+        this.registeredAt = timestamp;
+        this.packPassword = packPassword;
+        this.personalEmail = personalEmail;
+        this.otherEmail = otherEmail;
+    }
+
     @Override
     public String toString() {
         String sep = System.lineSeparator();

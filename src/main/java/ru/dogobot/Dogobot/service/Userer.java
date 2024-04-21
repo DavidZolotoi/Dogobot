@@ -75,27 +75,35 @@ public class Userer {
      * @throws Exception если возникли исключения
      */
     protected User updatePackPassword(User user, String newPackPassword) throws Exception {
-
-        userConfig.updatePackPassword(newPackPassword);
+        //в конфигурациях
+        if (!userConfig.updateConfigPackPassword(newPackPassword)) {
+            return user;
+        }
+        //в экземпляре user
         user.setPackPassword(userConfig.getConfigs().get(userConfig.getPACK_PASSWORD_KEY()));
+        //в БД
         userRepository.save(user);
-
+        log.info("Пароль пользователя обновлен, как локально, так и в БД.");
         return user;
     }
 
     /**
-     * Обновляет другой адрес электронной почты пользователя
-     * @param user пользователь, другой адрес электронной почты которого нужно обновить
-     * @param newPersonalMail новый другой адрес электронной почты
+     * Обновляет персональный адрес электронной почты пользователя
+     * @param user пользователь, персональный адрес электронной почты которого нужно обновить
+     * @param newPersonalMail новый персональный адрес электронной почты
      * @return пользователь
      * @throws Exception если возникли исключения
      */
     protected User updatePersonalEmail(User user, String newPersonalMail) throws Exception {
-
-        userConfig.updatePersonalEmail(newPersonalMail);
+        //в конфигурациях
+        if(!userConfig.updateConfigPersonalEmail(newPersonalMail)) {
+            return user;
+        }
+        //в экземпляре user
         user.setPersonalEmail(userConfig.getConfigs().get(userConfig.getPERSONAL_EMAIL_KEY()));
+        //в БД
         userRepository.save(user);
-
+        log.info("Персональный адрес пользователя обновлен, как локально, так и в БД.");
         return user;
     }
 
@@ -107,11 +115,15 @@ public class Userer {
      * @throws Exception если возникли исключения
      */
     protected User updateOtherEmail(User user, String newOtherMail) throws Exception {
-
-        userConfig.updateOtherEmail(newOtherMail);
+        //в конфигурациях
+        if (!userConfig.updateConfigOtherEmail(newOtherMail)) {
+            return user;
+        }
+        //в экземпляре user
         user.setOtherEmail(userConfig.getConfigs().get(userConfig.getOTHER_EMAIL_KEY()));
+        //в БД
         userRepository.save(user);
-
+        log.info("Другой другой адрес электронной почты пользователя обновлен, как локально, так и в БД.");
         return user;
     }
 
