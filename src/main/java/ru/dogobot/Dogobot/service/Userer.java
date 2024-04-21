@@ -17,6 +17,8 @@ import java.util.NoSuchElementException;
 @Data
 public class Userer {
 
+    //todo перепроверить возвраты из методов, возможно в них стоит обратиться к БД
+
     @Autowired
     private UserRepository userRepository;
 
@@ -26,6 +28,12 @@ public class Userer {
         this.userConfig = userConfig;
     }
 
+    /**
+     * Ищет пользователя в базе данных по chatId
+     * @param chatId Id чата
+     * @return найденный пользователь
+     * @throws NoSuchElementException если пользователь не найден
+     */
     protected User findUserById(Long chatId) throws NoSuchElementException {
 
         User user = userRepository.findById(chatId).get();
@@ -33,6 +41,12 @@ public class Userer {
         return user;
     }
 
+    /**
+     * Регистрирует пользователя в базе данных
+     * @param userForRegister пользователь
+     * @return пользователь для регистрации
+     * @throws Exception если возникли исключения
+     */
     protected User registerUser(User userForRegister) throws Exception {
 
         User user = userRepository.save(userForRegister);
@@ -40,6 +54,12 @@ public class Userer {
         return user;
     }
 
+    /**
+     * Удаляет пользователя из базы данных
+     * @param user пользователь, которого нужно удалить
+     * @return пользователь, который был удален
+     * @throws Exception если возникли исключения
+     */
     protected User deleteUser(User user) throws Exception {
 
         userRepository.delete(user);
@@ -47,17 +67,49 @@ public class Userer {
         return user;
     }
 
+    /**
+     * Обновляет пароль пользователя в базе данных
+     * @param user пользователь, пароль которого нужно обновить
+     * @param newPackPassword новый пароль
+     * @return пользователь
+     * @throws Exception если возникли исключения
+     */
     protected User updatePackPassword(User user, String newPackPassword) throws Exception {
 
-        user.setPackPassword(newPackPassword);
+        userConfig.updatePackPassword(newPackPassword);
+        user.setPackPassword(userConfig.getConfigs().get(userConfig.getPACK_PASSWORD_KEY()));
         userRepository.save(user);
 
         return user;
     }
 
-    protected User updateOtherMail(User user, String newOtherMail) throws Exception {
+    /**
+     * Обновляет другой адрес электронной почты пользователя
+     * @param user пользователь, другой адрес электронной почты которого нужно обновить
+     * @param newPersonalMail новый другой адрес электронной почты
+     * @return пользователь
+     * @throws Exception если возникли исключения
+     */
+    protected User updatePersonalEmail(User user, String newPersonalMail) throws Exception {
 
-        user.setOtherEmail(newOtherMail);
+        userConfig.updatePersonalEmail(newPersonalMail);
+        user.setPersonalEmail(userConfig.getConfigs().get(userConfig.getPERSONAL_EMAIL_KEY()));
+        userRepository.save(user);
+
+        return user;
+    }
+
+    /**
+     * Обновляет другой адрес электронной почты пользователя
+     * @param user пользователь, другой адрес электронной почты которого нужно обновить
+     * @param newOtherMail новый другой адрес электронной почты
+     * @return пользователь
+     * @throws Exception если возникли исключения
+     */
+    protected User updateOtherEmail(User user, String newOtherMail) throws Exception {
+
+        userConfig.updateOtherEmail(newOtherMail);
+        user.setOtherEmail(userConfig.getConfigs().get(userConfig.getOTHER_EMAIL_KEY()));
         userRepository.save(user);
 
         return user;

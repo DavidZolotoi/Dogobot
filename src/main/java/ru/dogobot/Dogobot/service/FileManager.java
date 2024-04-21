@@ -293,7 +293,8 @@ public class FileManager {
         user.setUserName(message.getChat().getUserName());
         user.setRegisteredAt(new Timestamp(System.currentTimeMillis()));
         user.setPackPassword(userer.getUserConfig().getPackPassword());
-        user.setPersonalEmail(emailConfig.getEmailFrom());
+        user.setPersonalEmail(userer.getUserConfig().getPersonalEmail());
+        user.setOtherEmail(userer.getUserConfig().getOtherEmail());
         return user;
     }
 
@@ -389,12 +390,32 @@ public class FileManager {
         return user;
     }
 
+    public User updatePersonalMail(Update update, String newPersonalMail) {
+        String report = null;
+        User user = findUser(update);
+        if(user != null){
+            try {
+                user = userer.updatePersonalEmail(user, newPersonalMail);
+                report = "Установлен новый 'персональный адрес электронной почты (для получения на него писем)'. " + System.lineSeparator() + user.toString();
+                log.info(report);
+            } catch (Exception e) {
+                report = "Не удалось установить новый 'персональный адрес электронной почты (для получения на него писем)'.";
+                log.error(report);
+            }
+        } else{
+            report = "Данных о пользователе не найдено.";
+            log.error(report);
+        }
+
+        return user;
+    }
+
     public User updateOtherMail(Update update, String newOtherMail) {
         String report = null;
         User user = findUser(update);
         if(user != null){
             try {
-                user = userer.updateOtherMail(user, newOtherMail);
+                user = userer.updateOtherEmail(user, newOtherMail);
                 report = "Установлен новый 'другой адрес электронной почты (для отправки на него писем)'. " + System.lineSeparator() + user.toString();
                 log.info(report);
             } catch (Exception e) {

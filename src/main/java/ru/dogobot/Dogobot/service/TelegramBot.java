@@ -76,7 +76,8 @@ public class TelegramBot extends TelegramLongPollingBot {
     public enum OtherCommandEnum {
         GOTO(       "/goto ",       "Перейти в указанную папку"),
         SETPASS(    "/setpass ",    "Установить новый пароль"),
-        SETMAIL(    "/setmail ",    "Установить новый адрес 'другой электронной почты'"),
+        SETPMAIL(   "/setpmail ",   "Установить новый адрес 'персональной электронной почты'"),
+        SETOMAIL(   "/setomail ",   "Установить новый адрес 'другой электронной почты'"),
         RENAME(     "/rn ",         "Переименовать папку/файл"),
         MOVE(       "/mv ",         "Переместить папку/файл"),
         COPY(       "/cp ",         "Копировать папку/файл"),
@@ -203,8 +204,11 @@ public class TelegramBot extends TelegramLongPollingBot {
             } else if ( isCommand(update, OtherCommandEnum.SETPASS) ) {
                 commandSetPassHandler(update);
 
-            } else if ( isCommand(update, OtherCommandEnum.SETMAIL) ) {
-                commandSetMailHandler(update);
+            } else if ( isCommand(update, OtherCommandEnum.SETPMAIL) ) {
+                commandSetPersonalMailHandler(update);
+
+            } else if ( isCommand(update, OtherCommandEnum.SETOMAIL) ) {
+                commandSetOtherMailHandler(update);
 
             } else if ( isCommand(update, OtherCommandEnum.RENAME) ) {
                 commandRenameHandler(update);
@@ -489,14 +493,31 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     /**
-     * Обработчик команды /setmail
+     * Обработчик команды /setpmail
      * @param update объект обновления
      */
-    private void commandSetMailHandler(Update update) {
+    private void commandSetPersonalMailHandler(Update update) {
+        long chatId = update.getMessage().getChatId();
+        User user = fileManager.updatePersonalMail(
+                update,
+                update.getMessage().getText().substring(OtherCommandEnum.SETPMAIL.key.length())
+        );
+        sendMessageWithoutKeyboard(
+                chatId,
+                "Произведена попытка смены персонального адреса электронной почты (для получения на неё писем)." + System.lineSeparator()
+                        + user.toString()
+        );
+    }
+
+    /**
+     * Обработчик команды /setomail
+     * @param update объект обновления
+     */
+    private void commandSetOtherMailHandler(Update update) {
         long chatId = update.getMessage().getChatId();
         User user = fileManager.updateOtherMail(
                 update,
-                update.getMessage().getText().substring(OtherCommandEnum.SETMAIL.key.length())
+                update.getMessage().getText().substring(OtherCommandEnum.SETOMAIL.key.length())
         );
         sendMessageWithoutKeyboard(
                 chatId,
@@ -560,8 +581,8 @@ public class TelegramBot extends TelegramLongPollingBot {
                 "---" + sep +
                 "Другая почта (для отправки на неё писем): " + user.getOtherEmail() + sep +
                 "Для изменения другой почты (для отправки на неё писем) введите команду (без кавычек и фигурных скобок)" + sep +
-                "в формате '" + OtherCommandEnum.SETMAIL.key + " {новый адрес другой почты}'." + sep +
-                "Например: " + OtherCommandEnum.SETMAIL.key + " mynew@other.mail" + sep;
+                "в формате '" + OtherCommandEnum.SETOMAIL.key + " {новый адрес другой почты}'." + sep +
+                "Например: " + OtherCommandEnum.SETOMAIL.key + " mynew@other.mail" + sep;
         sendMessageWithoutKeyboard(update.getMessage().getChatId(), report);
     }
 

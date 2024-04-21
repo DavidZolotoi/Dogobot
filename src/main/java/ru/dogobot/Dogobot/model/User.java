@@ -29,7 +29,7 @@ public class User {
     @Column(name = "registered_at")
     private Timestamp registeredAt;
 
-    //изменяемые базой настройки
+    //Изменяемые параметры пользователя, которые хранятся не только в БД, но в JSON
     @Column(name = "pack_password")
     private String packPassword;
 
