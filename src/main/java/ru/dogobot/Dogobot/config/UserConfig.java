@@ -19,7 +19,7 @@ public class UserConfig {
     final int INDENT_FACTOR = 2;
     private Map<String, String> configs;
 
-    //Изменяемые параметры пользователя, которые хранятся не только в БД, но в JSON
+    //region Изменяемые параметры пользователя, которые хранятся не только в БД, но в JSON
 
     private final String PACK_PASSWORD_KEY = "PACK_PASSWORD_KEY";
     private String packPassword;
@@ -29,6 +29,8 @@ public class UserConfig {
 
     private final String OTHER_EMAIL_KEY = "OTHER_EMAIL_KEY";
     private String otherEmail;
+
+    //endregion
 
     @Autowired
     public UserConfig(Jsoner jsoner) {

@@ -29,7 +29,7 @@ public class User {
     @Column(name = "registered_at")
     private Timestamp registeredAt;
 
-    //Изменяемые параметры пользователя, которые хранятся не только в БД, но в JSON
+    //region Изменяемые параметры пользователя, которые хранятся не только в БД, но в JSON
     @Column(name = "pack_password")
     private String packPassword;
 
@@ -38,6 +38,7 @@ public class User {
 
     @Column(name = "other_email")
     private String otherEmail;
+    //endregion
 
     public User() {
     }
