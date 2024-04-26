@@ -66,14 +66,6 @@ public class FileDir {
     private StringBuilder getFdArrayStringB(String separator) {
         StringBuilder fdArrayStringB = new StringBuilder();
 
-
-        //todo ДОДЕЛАТЬ - продолжить отсюда
-//        if (FileDir.this.fdArray == null){
-//            log.error("Проблема с содержимым папки/файла: " + separator + Arrays.toString(FileDir.this.fdArray));
-//            fdArrayStringB.append("Неизвестно,").append(separator);
-//            return fdArrayStringB;
-//        }
-
         if (FileDir.this.fdType == FDType.DIR && FileDir.this.fdArray.length > 2) {
             for (int i = 2; i < FileDir.this.fdArray.length; i++) { //минуя родителя и текущий
                 fdArrayStringB.append(FileDir.this.fdArray[i].getName()).append(",").append(separator);
@@ -81,12 +73,8 @@ public class FileDir {
             return fdArrayStringB;
         }
 
-        if (FileDir.this.fdType == FDType.DIR && FileDir.this.fdArray.length == 2) {
-            fdArrayStringB.append(separator);
-            return fdArrayStringB;
-        }
-
-        if (FileDir.this.fdType == FDType.FILE) {
+        if (FileDir.this.fdType == FDType.DIR && FileDir.this.fdArray.length == 2
+                        || FileDir.this.fdType == FDType.FILE) {
             fdArrayStringB.append(separator);
             return fdArrayStringB;
         }
@@ -94,8 +82,6 @@ public class FileDir {
         log.error("Проблема с содержимым папки/файла: " + separator + Arrays.toString(FileDir.this.fdArray));
         fdArrayStringB.append("Неизвестно,").append(separator);
         return fdArrayStringB;
-
-
     }
 
     /**
@@ -108,7 +94,7 @@ public class FileDir {
         if (FileDir.this.fdSize != null){
             fdSizeStringB.append(FileDir.this.fdSize).append(",").append(separator);
         } else {
-            log.error("Проблема с размером папки/файла: " + separator + Arrays.toString(FileDir.this.fdArray));
+            log.error("Проблема с размером папки/файла: " + separator + fdSizeStringB);
             fdSizeStringB.append("Неизвестно,").append(separator);
         }
         return fdSizeStringB;
@@ -125,6 +111,7 @@ public class FileDir {
             String formattedDate = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss").format(FileDir.this.fdDate);
             fdDateStringB.append("'").append(formattedDate).append("',").append(separator);
         } else {
+            log.warn("Дата изменения папки/файла == null " + separator + fdDateStringB);
             fdDateStringB.append("Неизвестно',").append(separator);
         }
         return fdDateStringB;
@@ -140,6 +127,7 @@ public class FileDir {
         if (FileDir.this.fdPath != null){
             fdPathStringB.append("'").append(FileDir.this.fdPath).append("',").append(separator);
         } else {
+            log.error("Путь папки/файла == null " + separator + fdPathStringB);
             fdPathStringB.append("Неизвестно',").append(separator);
         }
         return fdPathStringB;
@@ -155,6 +143,7 @@ public class FileDir {
         if (FileDir.this.fdNameOriginal != null){
             getFdNameOriginalStringB.append("'").append(FileDir.this.fdNameOriginal).append("',").append(separator);
         } else {
+            log.error("Имя папки/файла == null " + separator + getFdNameOriginalStringB);
             getFdNameOriginalStringB.append("Неизвестно',").append(separator);
         }
         return getFdNameOriginalStringB;
@@ -170,6 +159,7 @@ public class FileDir {
         if (FileDir.this.fdType != null){
             fdTypeStringB.append(FileDir.this.fdType.typeString).append(",").append(separator);
         } else {
+            log.warn("Тип папки/файла == null " + separator + fdTypeStringB);
             fdTypeStringB.append("Неизвестно,").append(separator);
         }
         return fdTypeStringB;
