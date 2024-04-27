@@ -336,43 +336,42 @@ public class TelegramBot extends TelegramLongPollingBot {
 
         //если нажали на кнопку "Упаковать в zip"
         if (callbackData.equals(FileManager.FileDirMenu.PACK.getButtonCallback())){
-            fileManager.zipFileDirWithoutPassword(
+            String report = fileManager.zipFileDirWithoutPassword(
                     fileManager.getFileDir()
             );
-            sendMessageWithoutKeyboard(chatId, "Папка успешно сжата в архив без установки пароля.");
+            sendMessageWithoutKeyboard(chatId, report);
             deleteMessageWithFileDirMenu(chatId);
             return;
         }
 
         //если нажали на кнопку "Упаковать в zip с паролем"
         if (callbackData.equals(FileManager.FileDirMenu.PACK_WITH_PASSWORD.getButtonCallback())){
-            fileManager.zipFileDirWithPassword(
+            String report = fileManager.zipFileDirWithPassword(
                     fileManager.getFileDir(),
-                    //todo переделать
-                    fileManager.userer.getUserConfig().getPackPassword()//findUser(update).getPackPassword()
+                    fileManager.findUser(update).getPackPassword()
             );
-            sendMessageWithoutKeyboard(chatId, "Папка успешно сжата в архив с установкой пароля.");
+            sendMessageWithoutKeyboard(chatId, report);
             deleteMessageWithFileDirMenu(chatId);
             return;
         }
 
         //если нажали "Распаковать из zip"
         if (callbackData.equals(FileManager.FileDirMenu.UNPACK.getButtonCallback())){
-            fileManager.unzipFileDirWithoutPassword(
+            String report = fileManager.unzipFileDirWithoutPassword(
                     fileManager.getFileDir()
             );
-            sendMessageWithoutKeyboard(chatId, "Архив успешно распакован без пароля.");
+            sendMessageWithoutKeyboard(chatId, report);
             deleteMessageWithFileDirMenu(chatId);
             return;
         }
 
         //если нажали "Распаковать из zip с паролем"
         if (callbackData.equals(FileManager.FileDirMenu.UNPACK_WITH_PASSWORD.getButtonCallback())){
-            fileManager.unzipFileDirWithPassword(
+            String report = fileManager.unzipFileDirWithPassword(
                     fileManager.getFileDir(),
                     fileManager.findUser(update).getPackPassword()
             );
-            sendMessageWithoutKeyboard(chatId, "Архив успешно распакован с паролем.");
+            sendMessageWithoutKeyboard(chatId, report);
             deleteMessageWithFileDirMenu(chatId);
             return;
         }

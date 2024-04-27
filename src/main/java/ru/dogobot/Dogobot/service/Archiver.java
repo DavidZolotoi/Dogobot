@@ -17,101 +17,124 @@ import java.io.File;
 public class Archiver {
 
     /**
-     * Сжатие папки в архив zip без пароля
-     * @param sourceFolder путь исходной папке
+     * Упаковка файла или папки в архив zip без пароля
+     *
+     * @param sourceForAdd путь к исходному файлу или папке
+     * @return путь к сохраненному архиву
+     * @throws ZipException если возникли исключения при упаковке
      */
-    public void zipFolderWithoutPassword(String sourceFolder) {
-        try {
-            String zipFilePath = "%s_%s.zip".formatted(
-                    sourceFolder,
-                    java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HHmmss"))
-            );
-
-            File folderToAdd = new File(sourceFolder);
-            ZipParameters parameters = new ZipParameters();
-            parameters.setCompressionMethod(CompressionMethod.DEFLATE);
-            parameters.setCompressionLevel(CompressionLevel.NORMAL);
-            parameters.setEncryptFiles(false);
-            parameters.setEncryptionMethod(EncryptionMethod.NONE);
-
-            ZipFile zipFile = new ZipFile(zipFilePath);
-            zipFile.addFolder(folderToAdd, parameters);
-
-            log.info("Папка успешно сжата в архив без установки пароля.");
-        } catch (ZipException e) {
-            log.error("Не удалось сжать папку (метод без пароля): " + e.getMessage());
+    public String zipFolderWithoutPassword(String sourceForAdd) throws ZipException {
+        File fileOrDirForAdd = new File(sourceForAdd);
+        if (!fileOrDirForAdd.exists()
+                || (!fileOrDirForAdd.isFile() && !fileOrDirForAdd.isDirectory())
+        ) {
+            throw new ZipException("Файл или папка не найдены и не упакованы (метод без пароля): " + sourceForAdd);
         }
+
+        ZipParameters parameters = new ZipParameters();
+        parameters.setCompressionMethod(CompressionMethod.DEFLATE);
+        parameters.setCompressionLevel(CompressionLevel.NORMAL);
+        parameters.setEncryptFiles(false);
+        parameters.setEncryptionMethod(EncryptionMethod.NONE);
+
+        String zipFilePath = "%s_%s.zip".formatted(
+                sourceForAdd,
+                java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HHmmss"))
+        );
+        ZipFile zipFile = new ZipFile(zipFilePath);
+        if (fileOrDirForAdd.isDirectory()) {
+            zipFile.addFolder(fileOrDirForAdd, parameters);
+            return zipFile.getFile().getAbsolutePath();
+        }
+        if (fileOrDirForAdd.isFile()) {
+            zipFile.addFile(fileOrDirForAdd, parameters);
+            return zipFile.getFile().getAbsolutePath();
+        }
+        throw new ZipException("Файл или папка не найдены и не упакованы (метод без пароля): " + sourceForAdd);
     }
 
     /**
-     * Сжатие папки в архив zip с паролем
-     * @param sourceFolder путь исходной папке
-     * @param password пароль для установки на архив
+     * Упаковка файла или папки в архив zip с паролем
+     *
+     * @param sourceForAdd путь к исходному файлу или папке
+     * @param password     пароль для архива
+     * @return путь к сохраненному архиву
+     * @throws ZipException если возникли исключения при упаковке
      */
-    public void zipFolderWithPassword(String sourceFolder, String password) {
-        try {
-            String zipFilePath = "%s_%s.zip".formatted(
-                    sourceFolder,
-                    java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HHmmss"))
-            );
-
-            File folderToAdd = new File(sourceFolder);
-            ZipParameters parameters = new ZipParameters();
-            parameters.setCompressionMethod(CompressionMethod.DEFLATE);
-            parameters.setCompressionLevel(CompressionLevel.NORMAL);
-            parameters.setEncryptFiles(true);
-            parameters.setEncryptionMethod(EncryptionMethod.ZIP_STANDARD);
-
-            ZipFile zipFile = new ZipFile(zipFilePath);
-            zipFile.setPassword(password.toCharArray());
-            zipFile.addFolder(folderToAdd, parameters);
-
-            log.info("Папка успешно сжата в архив с установкой пароля.");
-        } catch (ZipException e) {
-            log.error("Не удалось сжать папку (метод с паролем): " + e.getMessage());
+    public String zipFolderWithPassword(String sourceForAdd, String password) throws ZipException {
+        File fileOrDirForAdd = new File(sourceForAdd);
+        if (!fileOrDirForAdd.exists()
+                || (!fileOrDirForAdd.isFile() && !fileOrDirForAdd.isDirectory())
+        ) {
+            throw new ZipException("Файл или папка не найдены и не упакованы (метод без пароля): " + sourceForAdd);
         }
+
+        ZipParameters parameters = new ZipParameters();
+        parameters.setCompressionMethod(CompressionMethod.DEFLATE);
+        parameters.setCompressionLevel(CompressionLevel.NORMAL);
+        parameters.setEncryptFiles(false);
+        parameters.setEncryptionMethod(EncryptionMethod.NONE);
+
+        String zipFilePath = "%s_%s.zip".formatted(
+                sourceForAdd,
+                java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HHmmss"))
+        );
+        ZipFile zipFile = new ZipFile(zipFilePath);
+        zipFile.setPassword(password.toCharArray());
+        if (fileOrDirForAdd.isDirectory()) {
+            zipFile.addFolder(fileOrDirForAdd, parameters);
+            return zipFile.getFile().getAbsolutePath();
+        }
+        if (fileOrDirForAdd.isFile()) {
+            zipFile.addFile(fileOrDirForAdd, parameters);
+            return zipFile.getFile().getAbsolutePath();
+        }
+        throw new ZipException("Файл или папка не найдены и не упакованы (метод без пароля): " + sourceForAdd);
     }
 
     /**
      * Распаковка архива zip без пароля
      * @param zipFilePath путь к исходному архиву
+     * @return путь к распакованному архиву
+     * @throws ZipException если возникли исключения при распаковке
      */
-    public void unzipFileWithoutPassword(String zipFilePath) {
-        //todo добавить проверку на существование папки
-        try {
-            String zipFileParentPath = new File(zipFilePath).getParent();
-            ZipFile zipFile = new ZipFile(zipFilePath);
-            if (zipFile.isEncrypted()) {
-                //todo выкинуть исключение, потому что этот архив должен был быть без пароля
-                log.error("Архив оказался с паролем.");
-                return;
-            }
-            zipFile.extractAll(zipFileParentPath);
-
-            log.info("Архив успешно распакован без пароля.");
-        } catch (ZipException e) {
-            log.error("Не удалось распаковать архив (метод без пароля): " + e.getMessage());
+    public String unzipFileWithoutPassword(String zipFilePath) throws ZipException {
+        if (zipFilePath == null || !new File(zipFilePath).exists()) {
+            throw new ZipException("Архив не найден и не распакован (метод без пароля): " + zipFilePath);
         }
+
+        ZipFile zipFile = new ZipFile(zipFilePath);
+        if (zipFile.isEncrypted()) {
+            throw new ZipException("Архив не распакован (метод без пароля), он оказался с паролем.");
+        }
+
+        String zipFileParentPath = new File(zipFilePath).getParent();
+        zipFile.extractAll(zipFileParentPath);
+
+        return zipFileParentPath;
     }
+
     /**
      * Распаковка архива zip с паролем
      * @param zipFilePath путь к исходному архиву
-     * @param password пароль для архива для распаковки
+     * @param password пароль для архива
+     * @return путь к распакованному архиву
+     * @throws ZipException если возникли исключения при распаковке
      */
-    public void unzipFileWithPassword(String zipFilePath, String password) {
-        //todo добавить проверку на существование папки
-        try {
-            String zipFileParentPath = new File(zipFilePath).getParent();
-            ZipFile zipFile = new ZipFile(zipFilePath);
-            if (zipFile.isEncrypted()) {
-                zipFile.setPassword(password.toCharArray());
-            }
-            zipFile.extractAll(zipFileParentPath);
-
-            log.info("Архив успешно распакован с паролем.");
-        } catch (ZipException e) {
-            log.error("Не удалось распаковать архив (метод с паролем): " + e.getMessage());
+    public String unzipFileWithPassword(String zipFilePath, String password) throws ZipException {
+        if (zipFilePath == null || !new File(zipFilePath).exists()) {
+            throw new ZipException("Архив не найден и не распакован (метод без пароля): " + zipFilePath);
         }
+
+        ZipFile zipFile = new ZipFile(zipFilePath);
+        if (zipFile.isEncrypted()) {
+            zipFile.setPassword(password.toCharArray());
+        }
+
+        String zipFileParentPath = new File(zipFilePath).getParent();
+        zipFile.extractAll(zipFileParentPath);
+
+        return zipFileParentPath;
     }
 
 }

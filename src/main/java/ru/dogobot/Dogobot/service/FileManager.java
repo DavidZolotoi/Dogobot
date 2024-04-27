@@ -463,24 +463,86 @@ public class FileManager {
 
     //region РАБОТА С АРХИВАМИ
 
-    public void zipFileDirWithoutPassword(FileDir sourceFileDir) {
-        //todo подготовить отчет для отправки пользователю и в лог
-        archiver.zipFolderWithoutPassword(sourceFileDir.getFdPath());
+    /**
+     * Упаковывает файл или папку (метод без пароля)
+     * @param sourceFileDir элемент файловой системы, для которого работает метод
+     * @return отчет об упаковке
+     */
+    public String zipFileDirWithoutPassword(FileDir sourceFileDir) {
+        String report = null;
+        try {
+            report = "Упаковка файла или папки (метод без пароля) прошла без исключений. " + System.lineSeparator()
+                    + archiver.zipFolderWithoutPassword(sourceFileDir.getFdPath());
+            log.info(report);
+        } catch (Exception e){
+            report = "Не удалось упаковать файл или папку (метод без пароля): " + System.lineSeparator()
+                    + sourceFileDir.getFdPath();
+            log.error(report + System.lineSeparator() + e.getMessage());
+        }
+        return report;
     }
 
-    public void zipFileDirWithPassword(FileDir sourceFileDir, String password) {
-        //todo подготовить отчет для отправки пользователю и в лог
-        archiver.zipFolderWithPassword(sourceFileDir.getFdPath(), password);
+    /**
+     * Упаковывает файл или папку (метод с паролем).
+     * @param sourceFileDir элемент файловой системы, для которого работает метод
+     * @param password пароль для упаковки
+     * @return отчет об упаковке
+     */
+    public String zipFileDirWithPassword(FileDir sourceFileDir, String password) {
+        String report = null;
+        try {
+            report = "Упаковка файла или папки (метод с паролем) прошла без исключений. " + System.lineSeparator()
+                    + archiver.zipFolderWithPassword(sourceFileDir.getFdPath(), password);
+            log.info(report);
+        } catch (Exception e){
+            report = "Не удалось упаковать файл или папку (метод без пароля): " + System.lineSeparator()
+                    + sourceFileDir.getFdPath();
+            log.error(report + System.lineSeparator() + e.getMessage());
+        }
+        return report;
     }
 
-    public void unzipFileDirWithoutPassword(FileDir sourceFileDir) {
-        //todo подготовить отчет для отправки пользователю и в лог
-        archiver.unzipFileWithoutPassword(sourceFileDir.getFdPath());
+    /**
+     * Распаковывает файл или папку (метод без пароля).
+     * Если в родительской папке архива есть файлы или папки с именами, как в архиве, то они будут заменены.
+     * @param sourceFileDir элемент файловой системы, для которого работает метод.
+     * @return отчет о распаковке
+     */
+    public String unzipFileDirWithoutPassword(FileDir sourceFileDir) {
+        String report = null;
+        try {
+            report = "Распаковка файла или папки (метод без пароля) прошла без исключений. " + System.lineSeparator()
+                    + archiver.unzipFileWithoutPassword(sourceFileDir.getFdPath()) + System.lineSeparator()
+            + "Обратите внимание, если в родительской папке архива '" + sourceFileDir.getFdPath() + "' были файлы или папки с именами, как в распакованном архиве, то они были заменены на распакованные.";
+            log.info(report);
+        } catch (Exception e){
+            report = "Не удалось распаковать файл или папку (метод без пароля): " + System.lineSeparator()
+                    + sourceFileDir.getFdPath();
+            log.error(report + System.lineSeparator() + e.getMessage());
+        }
+        return report;
     }
 
-    public void unzipFileDirWithPassword(FileDir sourceFileDir, String password) {
-        //todo подготовить отчет для отправки пользователю и в лог
-        archiver.unzipFileWithPassword(sourceFileDir.getFdPath(), password);
+    /**
+     * Распаковывает файл или папку (метод с паролем).
+     * Если в родительской папке архива есть файлы или папки с именами, как в архиве, то они будут заменены.
+     * @param sourceFileDir элемент файловой системы, для которого работает метод
+     * @param password пароль для распаковки
+     * @return отчет о распаковке
+     */
+    public String unzipFileDirWithPassword(FileDir sourceFileDir, String password) {
+        String report = null;
+        try {
+            report = "Распаковка файла или папки (метод с паролем) прошла без исключений. " + System.lineSeparator()
+                    + archiver.unzipFileWithPassword(sourceFileDir.getFdPath(), password) + System.lineSeparator()
+                    + "Обратите внимание, если в родительской папке архива '" + sourceFileDir.getFdPath() + "' были файлы или папки с именами, как в распакованном архиве, то они были заменены на распакованные.";
+            log.info(report);
+        } catch (Exception e){
+            report = "Не удалось распаковать файл или папку (метод с паролем): " + System.lineSeparator()
+                    + sourceFileDir.getFdPath();
+            log.error(report + System.lineSeparator() + e.getMessage());
+        }
+        return report;
     }
 
     //endregion
