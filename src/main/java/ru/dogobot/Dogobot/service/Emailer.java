@@ -9,10 +9,12 @@ import org.springframework.stereotype.Service;
 import ru.dogobot.Dogobot.config.EmailConfig;
 
 import javax.mail.*;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Properties;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
@@ -24,6 +26,16 @@ public class Emailer {
     }
 
     /**
+     * Проверяет корректность адреса электронной почты
+     * @param email адрес электронной почты для проверки
+     * @return true, если адрес корректен, false в противном случае
+     */
+    private boolean isEmailValid(String email) {
+        String emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$";
+        return Pattern.compile(emailRegex).matcher(email).matches();
+    }
+
+    /**
      * Отправляет письмо без вложения
      * @param recipient адрес получателя
      * @param subject тема письма
@@ -31,12 +43,27 @@ public class Emailer {
      * @throws EmailException исключение, возникшее при отправке
      */
     public void sendEmailWithoutAttachment(String recipient, String subject, String body) throws EmailException {
+        if (!isEmailValid(recipient)){
+            throw new EmailException("Некорректный адрес электронной почты получателя.");
+        }
+        String sender = emailConfig.getEmailFrom();
+        if (!isEmailValid(sender)){
+            throw new EmailException("Некорректный адрес электронной почты отправителя.");
+        }
+        String smtpHost = emailConfig.getSmtpHost();
+        int smtpPort = emailConfig.getSmtpPort();
+        String password = emailConfig.getPassword();
+        if (smtpHost == null || smtpPort == 0 || password == null) {
+            throw new EmailException("Некорректная конфигурация электронной почты отправителя (SMTP)."
+                    + System.lineSeparator() + "smtpHost: '" + smtpHost + "', smtpPort: '" + smtpPort + "', также дело может быть в пароле.");
+        }
+
         MultiPartEmail email = new MultiPartEmail();
-        email.setHostName(emailConfig.getSmtpHost());
-        email.setSmtpPort(emailConfig.getSmtpPort());
-        email.setAuthenticator(new DefaultAuthenticator(emailConfig.getEmailFrom(), emailConfig.getPassword()));
+        email.setHostName(smtpHost);
+        email.setSmtpPort(smtpPort);
+        email.setAuthenticator(new DefaultAuthenticator(sender, password));
         email.setSSLOnConnect(true);
-        email.setFrom(emailConfig.getEmailFrom());
+        email.setFrom(sender);
         email.addTo(recipient);
         email.setSubject(subject);
         email.setMsg(body);
@@ -49,15 +76,34 @@ public class Emailer {
      * @param subject тема письма
      * @param body текст письма
      * @param attachmentPath путь к вложению
+     * @return отчёт по отправке
      * @throws EmailException исключение, возникшее при отправке
      */
-    public void sendEmailWithAttachment(String recipient, String subject, String body, String attachmentPath) throws EmailException {
+    public String sendEmailWithAttachment(String recipient, String subject, String body, String attachmentPath) throws EmailException {
+        if (!isEmailValid(recipient)){
+            throw new EmailException("Некорректный адрес электронной почты получателя." + recipient);
+        }
+        String sender = emailConfig.getEmailFrom();
+        if (!isEmailValid(sender)){
+            throw new EmailException("Некорректный адрес электронной почты отправителя." + sender);
+        }
+        String smtpHost = emailConfig.getSmtpHost();
+        int smtpPort = emailConfig.getSmtpPort();
+        String password = emailConfig.getPassword();
+        if (smtpHost == null || smtpPort == 0 || password == null) {
+            throw new EmailException("Некорректная конфигурация электронной почты отправителя (SMTP)."
+            + System.lineSeparator() + "smtpHost: '" + smtpHost + "', smtpPort: '" + smtpPort + "', также дело может быть в пароле.");
+        }
+        if (!new File(attachmentPath).exists()) {
+            throw new EmailException("Вложение не найдено: " + attachmentPath);
+        }
+
         MultiPartEmail email = new MultiPartEmail();
-        email.setHostName(emailConfig.getSmtpHost());
-        email.setSmtpPort(emailConfig.getSmtpPort());
-        email.setAuthenticator(new DefaultAuthenticator(emailConfig.getEmailFrom(), emailConfig.getPassword()));
+        email.setHostName(smtpHost);
+        email.setSmtpPort(smtpPort);
+        email.setAuthenticator(new DefaultAuthenticator(sender, password));
         email.setSSLOnConnect(true);
-        email.setFrom(emailConfig.getEmailFrom());
+        email.setFrom(sender);
         email.addTo(recipient);
         email.setSubject(subject);
         email.setMsg(body);
@@ -68,6 +114,7 @@ public class Emailer {
         email.attach(attachment);
 
         email.send();
+        return recipient;
     }
 
     /**
@@ -76,7 +123,7 @@ public class Emailer {
      * @throws Exception исключения, которые могут возникать при получении
      */
     public void receiveEmailWithAttachment(String dirPathForAttachment) throws Exception {
-        //todo продумать стратегию использования (спец.папка на сервере и прочее)
+        //todo метод не используется. Продумать стратегию использования (спец.папка на сервере и прочее)
 
         // Настройка свойств JavaMail
         Properties props = new Properties();
