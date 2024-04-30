@@ -649,18 +649,23 @@ public class FileManager {
                     fileDire.getFdJavaIoFile().toPath(),
                     (new File(newPathParent, fileDire.getFdNameOriginal())).toPath()
             );
-            report = "Папка или файл: " + fileDire.getFdPath() + " скопирована на путь: " + newPathParent;
+            report = "Папка или файл: " + fileDire.getFdPath() + " скопирована в: " + newPathParent;
             log.info(report);
         } catch (FilerException e) {
-            report = "Копирование аварийно приостановлено. Причина - не удалось скопировать папку или файл. Подробности:" + System.lineSeparator() + e.getMessage();
+            report = "Копирование аварийно остановлено. Причина - не удалось скопировать папку или файл. Подробности:" + System.lineSeparator() + e.getMessage();
             log.error(report);
         } catch (Exception e) {
-            report = "Копирование аварийно приостановлено. Причина - не удалось скопировать папку или файл: " + fileDire.getFdPath() + e.getMessage();
-            log.error(report);
+            report = "Копирование аварийно остановлено. Причина - не удалось скопировать папку или файл: " + fileDire.getFdPath();
+            log.error(report + System.lineSeparator() + e.getMessage());
         }
         return report;
     }
 
+    /**
+     * Удаляет папку или файл
+     * @param fileDir элемент файловой системы для которого работает метод
+     * @return отчет об удалении
+     */
     public String fileDirDelete(FileDir fileDir) {
         String report = null;
         try {

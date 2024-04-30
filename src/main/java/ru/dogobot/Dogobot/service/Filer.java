@@ -98,12 +98,16 @@ public class Filer {
                             Files.copy(sourcePath, destPath, StandardCopyOption.REPLACE_EXISTING);
                         }
                     } catch (IOException e) {
-                        throw new RuntimeException("Копирование аварийно приостановлено. Причина - не удалось скопировать '" + sourcePath + "' в '" + destPath + "' " + System.lineSeparator() + e.getMessage());
+                        throw new RuntimeException("Копирование аварийно остановлено. Причина - не удалось скопировать '" + sourcePath + "' в '" + destPath + "' " + System.lineSeparator() + e.getMessage());
                     }
                 });
         return destination.toFile();
     }
 
+    /**
+     * Рекурсивно удаляет папку или файл
+     * @param fileOrDir исходный файл или папка
+     */
     public void deleteFileDir(File fileOrDir) {
         // Recursive deletion for directories
         if (fileOrDir.isDirectory()) {
