@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import ru.dogobot.Dogobot.exception.EmailerException;
+import ru.dogobot.Dogobot.exception.FilerException;
 import ru.dogobot.Dogobot.model.FileDir;
 import ru.dogobot.Dogobot.model.User;
 
@@ -456,7 +457,8 @@ public class FileManager {
 
     /**
      * Отправляет письмо по электронной почте с вложением fileDir
-     * @param fileDir элемент файловой системы, для отправки
+     *
+     * @param fileDir   элемент файловой системы, для отправки
      * @param recipient адрес получателя
      * @return отчёт отправки
      */
@@ -467,7 +469,7 @@ public class FileManager {
                 throw new FileNotFoundException();
             }
 
-            if (!fileDir.getFdType().equals(FileDir.FDType.FILE)){
+            if (!fileDir.getFdType().equals(FileDir.FDType.FILE)) {
                 throw new EmailerException("Элемент файловой системы не является файлом. Если это папка, то перед отправкой, её стоит упаковать в архив.");
             }
 
@@ -586,38 +588,74 @@ public class FileManager {
 
     //region РАБОТА С ФАЙЛАМИ
 
+    /**
+     * Переименовывает папку или файл
+     * @param oldFileDir элемент файловой системы для которого работает метод
+     * @param newName новое имя
+     * @return отчет о переименовании
+     */
     public String fileDirRename(FileDir oldFileDir, String newName) {
-        String report = "Папка или файл: " + oldFileDir.getFdNameOriginal() + " переименован в: " + newName;
-        if (!filer.renameFileDir(oldFileDir.getFdJavaIoFile(), newName)) {
-            report = "Не удалось переименовать папку или файл: " + oldFileDir.getFdNameOriginal();
+        String report = null;
+        try {
+            File newFile = filer.renameFileDir(oldFileDir.getFdJavaIoFile(), newName);
+            report = "Папка или файл: " + oldFileDir.getFdNameOriginal() + " переименован в: " + newFile.getName();
+            log.info(report);
+        } catch (FilerException e) {
+            report = "Не удалось переименовать папку или файл. Подробности:" + System.lineSeparator() + e.getMessage();
             log.error(report);
+        } catch (Exception e) {
+            report = "Не удалось переименовать папку или файл.";
+            log.error(report + " Подробности:" + System.lineSeparator() + e.getMessage());
         }
         return report;
     }
 
-    public String fileDirMove(FileDir fileDire, String newPathParent) {
-        String report = "Папка или файл: " + fileDire.getFdPath() + " перемещена на путь: " + newPathParent;
-        if (!filer.moveFileDir(
-                fileDire.getFdJavaIoFile(),
-                new File(newPathParent, fileDire.getFdNameOriginal()).getAbsolutePath()
-        )) {
-            report = "Не удалось переместить папку или файл: " + fileDire.getFdPath();
+    /**
+     * Перемещает папку или файл
+     * @param oldFileDir элемент файловой системы для которого работает метод
+     * @param newPathParent путь к родительской папке нового места
+     * @return отчет о перемещении
+     */
+    public String fileDirMove(FileDir oldFileDir, String newPathParent) {
+        String report = null;
+        try {
+            File newFile = filer.moveFileDir(
+                    oldFileDir.getFdJavaIoFile(),
+                    new File(newPathParent, oldFileDir.getFdNameOriginal()).getAbsolutePath()
+            );
+            report = "Папка или файл: " + oldFileDir.getFdPath() + " перемещен в: " + newFile.getAbsolutePath();
+            log.info(report);
+        } catch (FilerException e) {
+            report = "Не удалось переместить папку или файл. Подробности:" + System.lineSeparator() + e.getMessage();
             log.error(report);
+        } catch (Exception e) {
+            report = "Не удалось переименовать папку или файл.";
+            log.error(report + " Подробности:" + System.lineSeparator() + e.getMessage());
         }
         return report;
     }
 
+    /**
+     * Копирует папку или файл
+     * @param fileDire элемент файловой системы для которого работает метод
+     * @param newPathParent путь к родительской папке нового места
+     * @return отчет о копировании
+     */
     public String fileDirCopy(FileDir fileDire, String newPathParent) {
         String report = null;
 
         try {
-            filer.copyFileDir(
+            File newFile = filer.copyFileDir(
                     fileDire.getFdJavaIoFile().toPath(),
                     (new File(newPathParent, fileDire.getFdNameOriginal())).toPath()
             );
             report = "Папка или файл: " + fileDire.getFdPath() + " скопирована на путь: " + newPathParent;
+            log.info(report);
+        } catch (FilerException e) {
+            report = "Копирование аварийно приостановлено. Причина - не удалось скопировать папку или файл. Подробности:" + System.lineSeparator() + e.getMessage();
+            log.error(report);
         } catch (Exception e) {
-            report = "Не удалось скопировать папку или файл: " + fileDire.getFdPath() + e.getMessage();
+            report = "Копирование аварийно приостановлено. Причина - не удалось скопировать папку или файл: " + fileDire.getFdPath() + e.getMessage();
             log.error(report);
         }
         return report;

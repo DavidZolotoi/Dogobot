@@ -467,7 +467,8 @@ public class TelegramBot extends TelegramLongPollingBot {
      */
     private void commandGotoArgsHandler(Update update) {
         long chatId = update.getMessage().getChatId();
-        String targetPath = update.getMessage().getText().substring(OtherCommandEnum.GOTO.key.length());
+        String targetPath = update.getMessage().getText()
+                .substring(OtherCommandEnum.GOTO.key.length()).trim();
         FileDir fileDir = fileManager.getFileDirWithScan(targetPath);
         sendMessageWithInlineKeyboard(
                 chatId,
@@ -485,7 +486,8 @@ public class TelegramBot extends TelegramLongPollingBot {
         long chatId = update.getMessage().getChatId();
         User user = fileManager.updatePackPassword(
                 update,
-                update.getMessage().getText().substring(OtherCommandEnum.SETPASS.key.length())
+                update.getMessage().getText()
+                        .substring(OtherCommandEnum.SETPASS.key.length())
         );
         sendMessageWithoutKeyboard(
                 chatId,
@@ -504,7 +506,8 @@ public class TelegramBot extends TelegramLongPollingBot {
         long chatId = update.getMessage().getChatId();
         User user = fileManager.updatePersonalMail(
                 update,
-                update.getMessage().getText().substring(OtherCommandEnum.SETPMAIL.key.length())
+                update.getMessage().getText()
+                        .substring(OtherCommandEnum.SETPMAIL.key.length()).trim()
         );
         sendMessageWithoutKeyboard(
                 chatId,
@@ -523,7 +526,8 @@ public class TelegramBot extends TelegramLongPollingBot {
         long chatId = update.getMessage().getChatId();
         User user = fileManager.updateOtherMail(
                 update,
-                update.getMessage().getText().substring(OtherCommandEnum.SETOMAIL.key.length())
+                update.getMessage().getText()
+                        .substring(OtherCommandEnum.SETOMAIL.key.length()).trim()
         );
         sendMessageWithoutKeyboard(
                 chatId,
@@ -620,29 +624,48 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     //варианты с дробью, но с аргументами
+
+    /**
+     * Обработчик команды OtherCommandEnum.RENAME
+     *
+     * @param update объект обновления
+     */
     private void commandRenameHandler(Update update) {
         long chatId = update.getMessage().getChatId();
         String report = fileManager.fileDirRename(
                 fileManager.getFileDir(),
-                update.getMessage().getText().substring(OtherCommandEnum.RENAME.key.length())
+                update.getMessage().getText()
+                        .substring(OtherCommandEnum.RENAME.key.length()).trim()
         );
         sendMessageWithoutKeyboard(chatId, report);
     }
 
+    /**
+     * Обработчик команды OtherCommandEnum.MOVE
+     *
+     * @param update объект обновления
+     */
     private void commandMoveHandler(Update update) {
         long chatId = update.getMessage().getChatId();
         String report = fileManager.fileDirMove(
                 fileManager.getFileDir(),
-                update.getMessage().getText().substring(OtherCommandEnum.MOVE.key.length())
+                update.getMessage().getText()
+                        .substring(OtherCommandEnum.MOVE.key.length()).trim()
         );
         sendMessageWithoutKeyboard(chatId, report);
     }
 
+    /**
+     * Обработчик команды OtherCommandEnum.COPY
+     *
+     * @param update объект обновления
+     */
     private void commandCopyHandler(Update update) {
         long chatId = update.getMessage().getChatId();
         String report = fileManager.fileDirCopy(
                 fileManager.getFileDir(),
-                update.getMessage().getText().substring(OtherCommandEnum.COPY.key.length())
+                update.getMessage().getText()
+                        .substring(OtherCommandEnum.COPY.key.length()).trim()
         );
         sendMessageWithoutKeyboard(chatId, report);
     }
@@ -650,7 +673,8 @@ public class TelegramBot extends TelegramLongPollingBot {
     private void commandCMDHandler(Update update) {
         long chatId = update.getMessage().getChatId();
         String report = fileManager.terminalExecute(
-                update.getMessage().getText().substring(OtherCommandEnum.CMD.key.length())
+                update.getMessage().getText()
+                        .substring(OtherCommandEnum.CMD.key.length()).trim()
         );
         sendMessageWithoutKeyboard(chatId, report);
     }
