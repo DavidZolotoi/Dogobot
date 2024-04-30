@@ -121,7 +121,8 @@ public class FileManager {
         final String txtForFinish = "%s%s".formatted(
                 fileDir.getFdJavaIoFile().getAbsolutePath(), fileDir.getFdJavaIoFile().length()
         );
-        return Screenshoter.getRandomStringDate(txtForFinish);
+        String id = Screenshoter.getRandomStringDate(txtForFinish); //todo это и не только в блок try/catch
+        return id;
     }
 
     /**
@@ -449,8 +450,22 @@ public class FileManager {
         return user;
     }
 
-
     //endregion
+
+    /**
+     * Делает скриншот
+     * @return путь к скриншоту
+     */
+    protected String printScreen(){
+        try {
+            String screenPath = getScreenshoter().take();
+            log.info("Скриншот сделан. Путь: " + screenPath);
+            return screenPath;
+        } catch (Exception e) {
+            log.warn("Не удалось сделать скриншот. " + e.getMessage());
+            return null;
+        }
+    }
 
 
     //region РАБОТА С ЭЛЕКТРОННОЙ ПОЧТОЙ

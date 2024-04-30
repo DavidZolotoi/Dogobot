@@ -543,7 +543,12 @@ public class TelegramBot extends TelegramLongPollingBot {
      * @param update объект обновления
      */
     private void commandScreenshotHandler(Update update) {
-        String screenPath = fileManager.getScreenshoter().take();
+        String screenPath = fileManager.printScreen();
+        if (screenPath == null) {
+            sendMessageWithoutKeyboard(update.getMessage().getChatId(), "Не удалось создать скриншот.");
+            return;
+        }
+        sendMessageWithoutKeyboard(update.getMessage().getChatId(), "Скриншот создан: " + screenPath);
         sendFile(update.getMessage().getChatId(), screenPath);
     }
 
