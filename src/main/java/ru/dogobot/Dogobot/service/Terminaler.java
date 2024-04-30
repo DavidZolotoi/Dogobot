@@ -9,63 +9,68 @@ import java.io.*;
 @Service
 public class Terminaler {
 
-    public String processExecute(String script) throws IOException {
-        String os = System.getProperty("os.name").toLowerCase();
-        String term1 = "bash", term2 = "-c";
-        if (os.contains("win")) {
-            term1 = "cmd";
-            term2 = "/c";
-        }
-        Runtime rt = Runtime.getRuntime();
-        Process pr = rt.exec(new String[] { term1, term2, "\"\"%s\"\"".formatted(script)});
+    /**
+     * Запускает команду(ы) в терминале
+     * @param script команда(ы) для запуска в терминале
+     * @return процесс запуска команды
+     * @throws IOException если возникли исключения
+     */
+    public Process processBuilderExecute(String script) throws IOException {
+        String[] bashOrCmdAndScript = fillCommandForOS(script);
+        ProcessBuilder builderForScript = new ProcessBuilder(bashOrCmdAndScript);
+        return builderForScript.start();
+    }
 
-        InputStream is = pr.getInputStream();
-        BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+    /**
+     * Заполняет команду для запуска в терминале с учетом ОС
+     * @param script команда для запуска
+     * @return команду для запуска в необходимом формате (String[])
+     */
+    private String[] fillCommandForOS(String script) {
+        String bashOrCmd1 = "bash";
+        String bashOrCmd2 = "-c";
+        if (System.getProperty("os.name").toLowerCase().contains("win")){
+            bashOrCmd1 = "cmd";
+            bashOrCmd2 = "/c";
+        }
+        script = script.replace("—", "--");
+        return new String[]{bashOrCmd1, bashOrCmd2, script};
+    }
+
+
+    private StringBuilder getAnswerFromProcessStream(Process processForScript) throws IOException {
         StringBuilder report = new StringBuilder();
+        InputStream is = processForScript.getInputStream();
+        BufferedReader reader = new BufferedReader(new InputStreamReader(is));
         String line;
         while ((line = reader.readLine()) != null) {
             report.append(line).append("\n");
         }
-
-        return report.toString();
+        return report;
     }
 
-    public String processBuilderExecute(String[] script){
-//        String javaBin = System.getProperty("java.home") + File.separator + "bin" + File.separator + "java";
-        ProcessBuilder builder = new ProcessBuilder(script);
-
-        InputStream is = null;
-        try {
-            is = builder.start().getInputStream();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-        StringBuilder report = new StringBuilder();
-        String line;
-        while (true) {
-            try {
-                if ((line = reader.readLine()) == null) break;
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-            report.append(line).append("\n");
-        }
-
-        return report.toString();
+    /**
+     * Запускает команду(ы) в терминале и возвращает ответ
+     * @param script команда(ы) для запуска в терминале
+     * @return ответ от команды в полученном процессе
+     * @throws IOException если возникли исключения
+     */
+    public String processBuilderExecuteWithAnswer(String script) throws IOException {
+        Process processForScript = processBuilderExecute(script);
+        return getAnswerFromProcessStream(processForScript).toString();
     }
 
-    protected void appCloneAndClose(){
-        String javaBin = System.getProperty("java.home") + File.separator + "bin" + File.separator + "java";
-        String currentJar = new File(new File("."), "Dogobot-0.0.1-SNAPSHOT.jar").getAbsolutePath();
-
-        ProcessBuilder builder = new ProcessBuilder(javaBin, "-jar", currentJar);
-        try {
-            builder.start();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        System.exit(0);
+    /**
+     * Запускает команду(ы) в терминале и возвращает ответ - второй запасной способ
+     * @param script команда(ы) для запуска в терминале
+     * @return ответ команды
+     * @throws IOException если возникли исключения
+     */
+    public String processExecuteWithAnswer(String script) throws IOException {
+        String[] bashOrCmdAndScript = fillCommandForOS(script);
+        Runtime rt = Runtime.getRuntime();
+        Process processForScript = rt.exec(bashOrCmdAndScript);
+        return getAnswerFromProcessStream(processForScript).toString();
     }
+
 }

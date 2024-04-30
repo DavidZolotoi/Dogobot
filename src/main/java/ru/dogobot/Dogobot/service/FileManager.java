@@ -454,9 +454,10 @@ public class FileManager {
 
     /**
      * Делает скриншот
+     *
      * @return путь к скриншоту
      */
-    protected String printScreen(){
+    protected String printScreen() {
         try {
             String screenPath = getScreenshoter().take();
             log.info("Скриншот сделан. Путь: " + screenPath);
@@ -605,8 +606,9 @@ public class FileManager {
 
     /**
      * Переименовывает папку или файл
+     *
      * @param oldFileDir элемент файловой системы для которого работает метод
-     * @param newName новое имя
+     * @param newName    новое имя
      * @return отчет о переименовании
      */
     public String fileDirRename(FileDir oldFileDir, String newName) {
@@ -627,7 +629,8 @@ public class FileManager {
 
     /**
      * Перемещает папку или файл
-     * @param oldFileDir элемент файловой системы для которого работает метод
+     *
+     * @param oldFileDir    элемент файловой системы для которого работает метод
      * @param newPathParent путь к родительской папке нового места
      * @return отчет о перемещении
      */
@@ -652,7 +655,8 @@ public class FileManager {
 
     /**
      * Копирует папку или файл
-     * @param fileDire элемент файловой системы для которого работает метод
+     *
+     * @param fileDire      элемент файловой системы для которого работает метод
      * @param newPathParent путь к родительской папке нового места
      * @return отчет о копировании
      */
@@ -678,6 +682,7 @@ public class FileManager {
 
     /**
      * Удаляет папку или файл
+     *
      * @param fileDir элемент файловой системы для которого работает метод
      * @return отчет об удалении
      */
@@ -695,13 +700,44 @@ public class FileManager {
 
     //endregion
 
+    /**
+     * Запускает команду(ы) в терминале
+     *
+     * @param script команда(ы)
+     * @return отчет о выполнении
+     */
     protected String terminalExecute(String script) {
         String report = null;
         try {
-            report = terminaler.processExecute(script);
-        } catch (IOException e) {
-            report = "Не удалось выполнить команду: " + script + "\n" + e.getMessage();
-            log.error(report);
+            report = terminaler.processBuilderExecuteWithAnswer(script);
+            log.info(report);
+        } catch (Exception e) {
+            report = "Не удалось выполнить команду(ы) в терминале: " + script;
+            log.error(report + System.lineSeparator() + e.getMessage());
+        }
+        return report;
+    }
+
+    /**
+     * Отложенный запуск копии бота и завершение текущей
+     * @return отчет о выполнении
+     */
+    protected String botReset() {
+        String report = null;
+        String javaBin = System.getProperty("java.home") + File.separator + "bin" + File.separator + "java";
+        String currentJar = new File(new File("."), "Dogobot-0.0.1-SNAPSHOT.jar").getAbsolutePath();
+        try {
+            String sleep = "sleep 5";
+            if (System.getProperty("os.name").toLowerCase().contains("win")) {
+                sleep = "timeout /t 5 > nul";
+            }
+            terminaler.processBuilderExecute(sleep + " && " + javaBin + " -jar " + currentJar);
+            report = "Отложенный запуск копии бота запущен. Следом запись вот этих логов в файл, завершение программы. Иначе - перехват исключений.";
+            log.info(report);
+            System.exit(0);
+        } catch (Exception e) {
+            report = "Не удалось отложенно запустить копию бота.";
+            log.error(report + " Подробности:" + System.lineSeparator() + e.getMessage());
         }
         return report;
     }

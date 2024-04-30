@@ -613,7 +613,8 @@ public class TelegramBot extends TelegramLongPollingBot {
      * @param update объект обновления
      */
     private void commandResetHandler(Update update) {
-        fileManager.terminaler.appCloneAndClose();
+        String report = fileManager.botReset();
+//        sendMessageWithoutKeyboard(update.getMessage().getChatId(), report);
     }
 
     /**
@@ -675,6 +676,10 @@ public class TelegramBot extends TelegramLongPollingBot {
         sendMessageWithoutKeyboard(chatId, report);
     }
 
+    /**
+     * Обработчик команды OtherCommandEnum.CMD
+     * @param update объект обновления
+     */
     private void commandCMDHandler(Update update) {
         long chatId = update.getMessage().getChatId();
         String report = fileManager.terminalExecute(
