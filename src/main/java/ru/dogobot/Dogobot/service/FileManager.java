@@ -75,20 +75,38 @@ public class FileManager {
     /**
      * Получает полные данные о FileDir (элемент файловой системы)
      * со сканированием содержимого и данных о содержимом.
-     *
      * @param inputPath путь к элементу файловой системы
      * @return объект FileDir со всеми данными
      */
     protected FileDir getFileDirWithScan(String inputPath) {
-        //сортировка и копирование только для текущей папки!!!
-        this.fileDir = getFileDirWithoutScan(inputPath);
-        return scanFileDirAndSaveItemData(this.fileDir);
+        try{
+            this.fileDir = getFileDirWithoutScan(inputPath);
+            return scanFileDirAndSaveItemData(this.fileDir);
+        } catch (Exception e) {
+            log.error("Полученный путь '" + inputPath + "' некорректен. Следом - открытие домашнего каталога."
+                    + System.lineSeparator() + e.getMessage());
+            return getFileDirHomeWithScan();
+        }
     }
 
     /**
-     * Получает первичные данные о FileDir (элемент файловой системы)
+     * Получает полные данные о FileDir (элемент файловой системы) домашней папки
+     * со сканированием содержимого и данных о содержимом.
+     * @return объект FileDir со всеми данными
+     */
+    protected FileDir getFileDirHomeWithScan() {
+        try{
+            this.fileDir = getFileDirWithoutScan(System.getProperty("user.home") + "/forTest"); //todo убрать forTest
+            return scanFileDirAndSaveItemData(this.fileDir);
+        } catch (Exception e) {
+            log.error("Не открывается даже домашняя папка" + System.lineSeparator() + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Получает некоторые данные о FileDir (элемент файловой системы)
      * без сканирования содержимого и данных о содержимом.
-     *
      * @param inputPath путь к элементу файловой системы
      * @return объект FileDir
      */
@@ -110,7 +128,6 @@ public class FileManager {
 
     /**
      * Получает (создает) идентификатор для FileDir.
-     *
      * @param fileDir элемент файловой системы, для которого работает метод
      * @return идентификатор = случайная неповторимая строка на основе текущей даты и части строкового окончания.
      * Длина строки 30 символов, что вписывается в различные требования.
@@ -120,13 +137,11 @@ public class FileManager {
         final String txtForFinish = "%s%s".formatted(
                 fileDir.getFdJavaIoFile().getAbsolutePath(), fileDir.getFdJavaIoFile().length()
         );
-        String id = Screenshoter.getRandomStringDate(txtForFinish); //todo это и не только в блок try/catch
-        return id;
+        return Screenshoter.getRandomStringDate(txtForFinish);
     }
 
     /**
      * Получает (определяет) тип для FileDir.
-     *
      * @param fileDir элемент файловой системы, для которого работает метод
      * @return тип (файл или папка) - enum FileDir.FDType
      */
@@ -140,7 +155,6 @@ public class FileManager {
 
     /**
      * Получает оригинальное название FileDir.
-     *
      * @param fileDir элемент файловой системы, для которого работает метод
      * @return оригинальное название
      */
@@ -151,13 +165,12 @@ public class FileManager {
     /**
      * Проверяет и в случае необходимости корректирует оригинальное название для соответствия требованиям к InlineKeyboardButton.
      * Корректировка происходит путём удаления неразрешенных символов и уменьшения длины строки до максимально допустимой.
-     *
      * @param fileDir элемент файловой системы, для которого работает метод
      * @return проверенное и корректное название для InlineKeyboardButton
      */
     protected String getPropertyFdNameInlineButton(FileDir fileDir) {
         //Для поддержки других языков надо либо добавлять сюда,
-        //либо менять на стратегию, чтоб в рег. выражении указать только запрещенные символы
+        //либо менять на стратегию, чтоб в рег.выражении указать только запрещенные символы
         //Регулярное выражение для допустимых символов (^ означает "всё, кроме")
         final String ALLOWED_CHARACTERS_REGEX = "[^a-zA-Zа-яА-Я0-9 .,:;`~'\"!?@#№$%^&*-_+=|<>(){}\\[\\]]";
         final int MAX_LENGTH = 30; //еще 2 оставляю для квадратных скобок папок []
@@ -187,7 +200,6 @@ public class FileManager {
 
     /**
      * Получает (задаёт) команду CallbackData для InlineKeyboardButton.
-     *
      * @param fileDir элемент файловой системы, для которого работает метод
      * @return CallbackData команда = FileDir.getFdId()
      */
@@ -197,7 +209,6 @@ public class FileManager {
 
     /**
      * Получает полный путь к FileDir.
-     *
      * @param fileDir элемент файловой системы, для которого работает метод
      * @return полный путь
      */
@@ -207,7 +218,6 @@ public class FileManager {
 
     /**
      * Получает дату последнего изменения FileDir.
-     *
      * @param fileDir элемент файловой системы, для которого работает метод
      * @return дата последнего изменения
      */
@@ -217,7 +227,6 @@ public class FileManager {
 
     /**
      * Получает занимаемый размер FileDir.
-     *
      * @param fileDir элемент файловой системы, для которого работает метод
      * @return занимаемый размер
      */
@@ -231,7 +240,6 @@ public class FileManager {
      * - элемент родительской папки;
      * - элемент текущей папки;
      * - отсортированные элементы внутри папки (папки перед файлами).
-     *
      * @param fileDir элемент файловой системы, для которого работает метод
      * @return отсортированный массив элементов файловой системы, включая текущий и родительский
      */
@@ -243,7 +251,7 @@ public class FileManager {
                 fileByNextPath,
                 fileByNextPath.getParentFile()
         };
-        if (fileByNextPath.listFiles() == null)   //если файл, то на этом всё
+        if (fileByNextPath.listFiles() == null)
             return dirsAndFilesWithDefault;
 
         //сортированный массив элементов ФС внутри папки
@@ -259,6 +267,7 @@ public class FileManager {
                             }
                         })
                         .toArray(File[]::new);
+
         //копирование - увеличение массива
         return Stream.concat(
                         Arrays.stream(dirsAndFilesWithDefault),
@@ -269,7 +278,6 @@ public class FileManager {
 
     /**
      * Сканирует папку и сохраняет данные о содержимом в FileDir.
-     *
      * @param fileDir элемент файловой системы, для которого работает метод
      * @return FileDir, заполненный всеми данными о содержимом
      */
@@ -299,7 +307,6 @@ public class FileManager {
 
     /**
      * Получает ID чата из объекта обновления (как Message, так и CallbackQuery).
-     *
      * @param update объект обновления
      * @return ID чата
      */
@@ -316,13 +323,12 @@ public class FileManager {
 
     /**
      * Поиск пользователя в БД или его регистрация в случае отсутствия.
-     *
      * @param update объект обновления
      * @return результат поиска
      */
     public String findUserOrRegister(Update update) {
         String smileBlush = EmojiParser.parseToUnicode(":blush:");
-        String report = null;
+        String report;
         try {
             User user = userer.findUserById(getChatIdFromUpdate(update));
             report = "Пользователь " + user.getUserName() + " уже зарегистрирован. Вы можете проверить корректность данных, вызвав соответствующую команду из меню" + smileBlush;
@@ -341,13 +347,12 @@ public class FileManager {
 
     /**
      * Создание и регистрация пользователя в БД.
-     *
      * @param update объект обновления
      * @return пользователь
      */
     public User createAndRegisterUser(Update update) {
         String smileBlush = EmojiParser.parseToUnicode(":blush:");
-        String report = null;
+        String report;
         var message = update.getMessage();
 
         User user = new User(
@@ -375,13 +380,12 @@ public class FileManager {
 
     /**
      * Получает информацию о пользователе из БД.
-     *
      * @param update объект обновления
      * @return информация о пользователе
      */
     public String getUserInfo(Update update) {
-        String report = null;
-        User user = null;
+        String report;
+        User user;
         try {
             String smileBlush = EmojiParser.parseToUnicode(":blush:");
             user = userer.findUserById(getChatIdFromUpdate(update));
@@ -397,12 +401,11 @@ public class FileManager {
 
     /**
      * Удаляет пользователя из БД
-     *
      * @param update объект обновления
      * @return пользователь
      */
     public String deleteUser(Update update) {
-        String report = null;
+        String report;
         try {
             userer.deleteUser(getChatIdFromUpdate(update));
             report = "Данные о пользователе удалены из БД.";
@@ -416,14 +419,13 @@ public class FileManager {
 
     /**
      * Обновляет пароль упаковки/распаковки
-     *
-     * @param update          объект обновления
+     * @param update объект обновления
      * @param newPackPassword новый пароль
      * @return пользователь с обновленным паролем
      */
     public String updatePackPassword(Update update, String newPackPassword) {
-        String report = null;
-        User user = null;
+        String report;
+        User user;
         try {
             user = userer.updatePackPassword(getChatIdFromUpdate(update), newPackPassword);
             report = "Пароль упаковки/распаковки успешно обновлен." + System.lineSeparator() + user.getPackPassword();
@@ -437,14 +439,13 @@ public class FileManager {
 
     /**
      * Обновляет персональный адрес электронной почты
-     *
-     * @param update          объект обновления
+     * @param update объект обновления
      * @param newPersonalMail новый персональный адрес
      * @return пользователь с обновленным персональным адресом
      */
     public String updatePersonalMail(Update update, String newPersonalMail) {
-        String report = null;
-        User user = null;
+        String report;
+        User user;
         try {
             user = userer.updatePersonalEmail(getChatIdFromUpdate(update), newPersonalMail);
             report = "Персональный адрес электронной почты успешно обновлен." + System.lineSeparator() + user.getPersonalEmail();
@@ -458,14 +459,13 @@ public class FileManager {
 
     /**
      * Обновляет другой адрес электронной почты
-     *
-     * @param update       объект обновления
+     * @param update объект обновления
      * @param newOtherMail новый другой адрес
      * @return пользователь с обновленным другой адрес
      */
     public String updateOtherMail(Update update, String newOtherMail) {
-        String report = null;
-        User user = null;
+        String report;
+        User user;
         try {
             user = userer.updateOtherEmail(getChatIdFromUpdate(update), newOtherMail);
             report = "Другой адрес электронной почты успешно обновлен." + System.lineSeparator() + user.getOtherEmail();
@@ -479,12 +479,11 @@ public class FileManager {
 
     /**
      * Получает личные настройки пользователя
-     *
      * @param update объект обновления
      * @return строку с личными настройками
      */
     protected String getUserSettings(Update update) {
-        String report = null;
+        String report;
         String sep = System.lineSeparator();
         try {
             User user = userer.findUserById(getChatIdFromUpdate(update));
@@ -505,7 +504,6 @@ public class FileManager {
 
     /**
      * Делает скриншот
-     *
      * @return путь к скриншоту
      */
     protected String printScreen() {
@@ -519,18 +517,16 @@ public class FileManager {
         }
     }
 
-
     //region РАБОТА С ЭЛЕКТРОННОЙ ПОЧТОЙ
 
     /**
      * Отправляет письмо по электронной почте с вложением fileDir
-     *
-     * @param fileDir   элемент файловой системы, для отправки
+     * @param fileDir элемент файловой системы, для отправки
      * @param recipient адрес получателя
      * @return отчёт отправки
      */
     protected String sendEmailWithAttachment(FileDir fileDir, String recipient) {
-        String report = null;
+        String report;
         try {
             if (!fileDir.getFdJavaIoFile().exists()) {
                 throw new FileNotFoundException();
@@ -563,13 +559,12 @@ public class FileManager {
 
     /**
      * Отправляет письмо с вложением на личную почту
-     *
      * @param fileDir элемент файловой системы, для отправки
      * @param update  объект обновления
      * @return отчёт отправки
      */
     protected String sendEmailPersonal(FileDir fileDir, Update update) {
-        String report = null;
+        String report;
         try {
             String recipient = userer.findUserById(getChatIdFromUpdate(update)).getPersonalEmail();
             report = sendEmailWithAttachment(fileDir, recipient);
@@ -582,13 +577,12 @@ public class FileManager {
 
     /**
      * Отправляет письмо с вложением на другую почту
-     *
      * @param fileDir элемент файловой системы, для отправки
      * @param update  объект обновления
      * @return отчёт отправки
      */
     protected String sendEmailOther(FileDir fileDir, Update update) {
-        String report = null;
+        String report;
         try {
             String recipient = userer.findUserById(getChatIdFromUpdate(update)).getOtherEmail();
             report = sendEmailWithAttachment(fileDir, recipient);
@@ -605,12 +599,11 @@ public class FileManager {
 
     /**
      * Упаковывает файл или папку (метод без пароля)
-     *
      * @param sourceFileDir элемент файловой системы, для которого работает метод
      * @return отчет об упаковке
      */
     public String zipFileDirWithoutPassword(FileDir sourceFileDir) {
-        String report = null;
+        String report;
         try {
             report = "Упаковка файла или папки (метод без пароля) прошла без исключений. " + System.lineSeparator()
                     + archiver.zipFolderWithoutPassword(sourceFileDir.getFdPath());
@@ -625,13 +618,12 @@ public class FileManager {
 
     /**
      * Упаковывает файл или папку (метод с паролем).
-     *
      * @param sourceFileDir элемент файловой системы, для которого работает метод
      * @param password      пароль для упаковки
      * @return отчет об упаковке
      */
     public String zipFileDirWithPassword(FileDir sourceFileDir, String password) {
-        String report = null;
+        String report;
         try {
             report = "Упаковка файла или папки (метод с паролем) прошла без исключений. " + System.lineSeparator()
                     + archiver.zipFolderWithPassword(sourceFileDir.getFdPath(), password);
@@ -646,13 +638,12 @@ public class FileManager {
 
     /**
      * Упаковывает файл или папку (метод с паролем - перегрузка без указания пароля).
-     *
      * @param sourceFileDir элемент файловой системы, для которого работает метод
      * @param update        объект обновления
      * @return отчет об упаковке
      */
     public String zipFileDirWithPassword(FileDir sourceFileDir, Update update) {
-        String report = null;
+        String report;
         try {
             String password = userer.findUserById(getChatIdFromUpdate(update)).getPackPassword();
             report = zipFileDirWithPassword(sourceFileDir, password);
@@ -667,12 +658,11 @@ public class FileManager {
     /**
      * Распаковывает файл или папку (метод без пароля).
      * Если в родительской папке архива есть файлы или папки с именами, как в архиве, то они будут заменены.
-     *
      * @param sourceFileDir элемент файловой системы, для которого работает метод.
      * @return отчет о распаковке
      */
     public String unzipFileDirWithoutPassword(FileDir sourceFileDir) {
-        String report = null;
+        String report;
         try {
             report = "Распаковка файла или папки (метод без пароля) прошла без исключений. " + System.lineSeparator()
                     + archiver.unzipFileWithoutPassword(sourceFileDir.getFdPath()) + System.lineSeparator()
@@ -689,13 +679,12 @@ public class FileManager {
     /**
      * Распаковывает файл или папку (метод с паролем).
      * Если в родительской папке архива есть файлы или папки с именами, как в архиве, то они будут заменены.
-     *
      * @param sourceFileDir элемент файловой системы, для которого работает метод
      * @param password      пароль для распаковки
      * @return отчет о распаковке
      */
     public String unzipFileDirWithPassword(FileDir sourceFileDir, String password) {
-        String report = null;
+        String report;
         try {
             report = "Распаковка файла или папки (метод с паролем) прошла без исключений. " + System.lineSeparator()
                     + archiver.unzipFileWithPassword(sourceFileDir.getFdPath(), password) + System.lineSeparator()
@@ -712,13 +701,12 @@ public class FileManager {
     /**
      * Распаковывает файл или папку (метод с паролем - перегрузка без указания пароля).
      * Если в родительской папке архива есть файлы или папки с именами, как в архиве, то они будут заменены.
-     *
      * @param sourceFileDir элемент файловой системы, для которого работает метод
      * @param update        объект обновления
      * @return отчет о распаковке
      */
     public String unzipFileDirWithPassword(FileDir sourceFileDir, Update update) {
-        String report = null;
+        String report;
         try {
             String password = userer.findUserById(getChatIdFromUpdate(update)).getPackPassword();
             report = unzipFileDirWithPassword(sourceFileDir, password);
@@ -736,13 +724,12 @@ public class FileManager {
 
     /**
      * Переименовывает папку или файл
-     *
      * @param oldFileDir элемент файловой системы для которого работает метод
-     * @param newName    новое имя
+     * @param newName новое имя
      * @return отчет о переименовании
      */
     public String fileDirRename(FileDir oldFileDir, String newName) {
-        String report = null;
+        String report;
         try {
             File newFile = filer.renameFileDir(oldFileDir.getFdJavaIoFile(), newName);
             report = "Папка или файл: " + oldFileDir.getFdNameOriginal() + " переименован в: " + newFile.getName();
@@ -759,13 +746,12 @@ public class FileManager {
 
     /**
      * Перемещает папку или файл
-     *
-     * @param oldFileDir    элемент файловой системы для которого работает метод
+     * @param oldFileDir элемент файловой системы для которого работает метод
      * @param newPathParent путь к родительской папке нового места
      * @return отчет о перемещении
      */
     public String fileDirMove(FileDir oldFileDir, String newPathParent) {
-        String report = null;
+        String report;
         try {
             File newFile = filer.moveFileDir(
                     oldFileDir.getFdJavaIoFile(),
@@ -785,16 +771,15 @@ public class FileManager {
 
     /**
      * Копирует папку или файл
-     *
-     * @param fileDire      элемент файловой системы для которого работает метод
+     * @param fileDire элемент файловой системы для которого работает метод
      * @param newPathParent путь к родительской папке нового места
      * @return отчет о копировании
      */
     public String fileDirCopy(FileDir fileDire, String newPathParent) {
-        String report = null;
-
+        String report;
+        File newFile;
         try {
-            File newFile = filer.copyFileDir(
+            newFile = filer.copyFileDir(
                     fileDire.getFdJavaIoFile().toPath(),
                     (new File(newPathParent, fileDire.getFdNameOriginal())).toPath()
             );
@@ -812,12 +797,11 @@ public class FileManager {
 
     /**
      * Удаляет папку или файл
-     *
      * @param fileDir элемент файловой системы для которого работает метод
      * @return отчет об удалении
      */
     public String fileDirDelete(FileDir fileDir) {
-        String report = null;
+        String report;
         try {
             filer.deleteFileDir(fileDir.getFdJavaIoFile());
             report = "Папка или файл: " + fileDir.getFdPath() + " удалена";
@@ -832,12 +816,11 @@ public class FileManager {
 
     /**
      * Запускает команду(ы) в терминале
-     *
      * @param script команда(ы)
      * @return отчет о выполнении
      */
     protected String terminalExecute(String script) {
-        String report = null;
+        String report;
         try {
             report = terminaler.processBuilderExecuteWithAnswer(script);
             log.info(report);
@@ -850,11 +833,10 @@ public class FileManager {
 
     /**
      * Отложенный запуск копии бота и завершение текущей
-     *
      * @return отчет о выполнении
      */
     protected String botReset() {
-        String report = null;
+        String report;
         String javaBin = System.getProperty("java.home") + File.separator + "bin" + File.separator + "java";
         String currentJar = new File(new File("."), "Dogobot-0.0.1-SNAPSHOT.jar").getAbsolutePath();
         try {

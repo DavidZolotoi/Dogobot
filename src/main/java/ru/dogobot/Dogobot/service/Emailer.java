@@ -144,8 +144,7 @@ public class Emailer {
         // Поиск сообщений с вложениями
         Message[] messages = inbox.getMessages();
         for (Message message : messages) {
-            if (message.getContent() instanceof Multipart) {
-                Multipart multipart = (Multipart) message.getContent();
+            if (message.getContent() instanceof Multipart multipart) {
                 for (int i = 0; i < multipart.getCount(); i++) {
                     BodyPart bodyPart = multipart.getBodyPart(i);
                     if (Part.ATTACHMENT.equalsIgnoreCase(bodyPart.getDisposition())) {

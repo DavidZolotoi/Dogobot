@@ -4,7 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ru.dogobot.Dogobot.exception.FilerException;
 
-import javax.mail.Folder;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
