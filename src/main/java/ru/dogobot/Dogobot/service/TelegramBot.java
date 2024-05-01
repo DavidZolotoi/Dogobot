@@ -312,9 +312,9 @@ public class TelegramBot extends TelegramLongPollingBot {
 
         //если нажали на кнопку "Получить на почту"
         if (callbackData.equals(FileManager.FileDirMenu.GET_ON_EMAIL.getButtonCallback())) {
-            String report = fileManager.sendEmailWithAttachment(
+            String report = fileManager.sendEmailPersonal(
                     fileManager.getFileDir(),
-                    fileManager.findUser(update).getPersonalEmail()
+                    update
             );
             sendMessageWithoutKeyboard(chatId, report);
             deleteMessageWithFileDirMenu(chatId);
@@ -323,9 +323,9 @@ public class TelegramBot extends TelegramLongPollingBot {
 
         //если нажали на кнопку "Отправить на почту"
         if (callbackData.equals(FileManager.FileDirMenu.SEND_TO_EMAIL.getButtonCallback())) {
-            String report = fileManager.sendEmailWithAttachment(
+            String report = fileManager.sendEmailOther(
                     fileManager.getFileDir(),
-                    fileManager.findUser(update).getOtherEmail()
+                    update
             );
             sendMessageWithoutKeyboard(chatId, report);
             deleteMessageWithFileDirMenu(chatId);
@@ -346,7 +346,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         if (callbackData.equals(FileManager.FileDirMenu.PACK_WITH_PASSWORD.getButtonCallback())) {
             String report = fileManager.zipFileDirWithPassword(
                     fileManager.getFileDir(),
-                    fileManager.findUser(update).getPackPassword()
+                    update
             );
             sendMessageWithoutKeyboard(chatId, report);
             deleteMessageWithFileDirMenu(chatId);
@@ -367,7 +367,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         if (callbackData.equals(FileManager.FileDirMenu.UNPACK_WITH_PASSWORD.getButtonCallback())) {
             String report = fileManager.unzipFileDirWithPassword(
                     fileManager.getFileDir(),
-                    fileManager.findUser(update).getPackPassword()
+                    update
             );
             sendMessageWithoutKeyboard(chatId, report);
             deleteMessageWithFileDirMenu(chatId);
@@ -558,15 +558,8 @@ public class TelegramBot extends TelegramLongPollingBot {
      * @param update объект обновления
      */
     private void commandMydataHandler(Update update) {
-        String report;
-        User user = fileManager.findUser(update);
-        if (user != null) {
-            report = user.toString();
-        } else {
-            report = "Данных о пользователе не найдено.";
-        }
-        //todo в отправках сделать проверку на null и т.п.
-        sendMessageWithoutKeyboard(user.getChatId(), report);
+        String report = fileManager.getUserInfo(update);
+        sendMessageWithoutKeyboard(update.getMessage().getChatId(), report);
     }
 
     /**
@@ -575,9 +568,9 @@ public class TelegramBot extends TelegramLongPollingBot {
      * @param update объект обновления
      */
     private void commandDeletedataHandler(Update update) {
-        User user = fileManager.deleteUser(update);
+        String report = fileManager.deleteUser(update);
         //todo добавить полную очистку чата и оставить кнопку /start
-        sendMessageWithoutKeyboard(user.getChatId(), "Пользователь удален. " + System.lineSeparator() + user);
+        sendMessageWithoutKeyboard(update.getMessage().getChatId(), report);
     }
 
     private void commandHelpHandler(Update update) {
@@ -586,21 +579,17 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     private void commandSettingsHandler(Update update) {
-        User user = fileManager.findUser(update);
         String sep = System.lineSeparator();
-        String report = "Личные настройки:" + sep +
+        String report = fileManager.getUserSettings(update) +
                 "---" + sep +
-                "Пароль (упаковка, распаковка и т.п.): " + user.getPackPassword() + sep +
                 "Для изменения пароля введите команду (без кавычек и фигурных скобок)" + sep +
                 "в формате: '" + OtherCommandEnum.SETPASS.key + " {новый пароль}'." + sep +
                 "Например: " + OtherCommandEnum.SETPASS.key + " 1111" + sep +
                 "---" + sep +
-                "Личная почта (для получения на неё писем): " + user.getPersonalEmail() + sep +
                 "Для изменения личной почты (для получения на неё писем) введите команду (без кавычек и фигурных скобок)" + sep +
                 "в формате '" + OtherCommandEnum.SETPMAIL.key + " {новый адрес личной почты}'." + sep +
                 "Например: " + OtherCommandEnum.SETPMAIL.key + " mynew@personal.mail" + sep +
                 "---" + sep +
-                "Другая почта (для отправки на неё писем): " + user.getOtherEmail() + sep +
                 "Для изменения другой почты (для отправки на неё писем) введите команду (без кавычек и фигурных скобок)" + sep +
                 "в формате '" + OtherCommandEnum.SETOMAIL.key + " {новый адрес другой почты}'." + sep +
                 "Например: " + OtherCommandEnum.SETOMAIL.key + " mynew@other.mail" + sep;

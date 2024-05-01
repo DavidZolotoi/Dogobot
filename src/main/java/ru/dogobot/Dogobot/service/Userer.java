@@ -35,9 +35,7 @@ public class Userer {
      * @throws NoSuchElementException если пользователь не найден
      */
     protected User findUserById(Long chatId) throws NoSuchElementException {
-
         User user = userRepository.findById(chatId).get();
-
         return user;
     }
 
@@ -61,9 +59,7 @@ public class Userer {
      * @throws Exception если возникли исключения
      */
     protected User deleteUser(User user) throws Exception {
-
         userRepository.delete(user);
-
         return user;
     }
 

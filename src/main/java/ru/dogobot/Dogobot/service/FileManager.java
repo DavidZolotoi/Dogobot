@@ -14,7 +14,6 @@ import ru.dogobot.Dogobot.model.User;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.sql.Timestamp;
 import java.util.*;
 import java.util.stream.Stream;
@@ -298,38 +297,67 @@ public class FileManager {
 
     //region РАБОТА С ПОЛЬЗОВАТЕЛЯМИ
 
-    public String findUserOrRegister(Update update) {
-        String smileBlush = EmojiParser.parseToUnicode(":blush:");
-        String report = null;
-
-        if (findUser(update) != null) {
-            report = "Данные о пользователе найдены. Вы можете проверить их корректность вызвав соответствующую команду из меню" + smileBlush;
-        } else {
-            createAndRegisterUser(update);
-            report = "Пользователь успешно зарегистрирован!" + smileBlush;
+    /**
+     * Получает ID чата из объекта обновления (как Message, так и CallbackQuery).
+     *
+     * @param update объект обновления
+     * @return ID чата
+     */
+    private Long getChatIdFromUpdate(Update update) {
+        Long chatId = null;
+        if (update.getMessage() != null) {
+            chatId = update.getMessage().getChatId();
         }
+        if (update.getCallbackQuery() != null) {
+            chatId = update.getCallbackQuery().getFrom().getId();
+        }
+        return chatId;
+    }
 
+    /**
+     * Поиск пользователя в БД или его регистрация в случае отсутствия.
+     *
+     * @param update объект обновления
+     * @return результат поиска
+     */
+    public String findUserOrRegister(Update update) {
+        String report = null;
+        try {
+            String smileBlush = EmojiParser.parseToUnicode(":blush:");
+            if (userer.findUserById(getChatIdFromUpdate(update)) != null) {
+                report = "Данные о пользователе найдены. Вы можете проверить их корректность вызвав соответствующую команду из меню" + smileBlush;
+            } else {
+                User user = createAndRegisterUser(update);
+                report = "Пользователь " + user.getUserName() + " успешно зарегистрирован!" + smileBlush;
+            }
+            log.info(report);
+        } catch (Exception e) {
+            report = "При поиске пользователя произошла ошибка. Возможно пользователь не зарегистрирован или есть проблемы с БД..";
+            log.error(report + System.lineSeparator() + e.getMessage());
+        }
         return report;
     }
 
-    public User findUser(Update update) {
-        String smileBlush = EmojiParser.parseToUnicode(":blush:");
+    /**
+     * Получает информацию о пользователе из БД.
+     *
+     * @param update объект обновления
+     * @return информация о пользователе
+     */
+    public String getUserInfo(Update update) {
         String report = null;
         User user = null;
-
         try {
-            if (update.getMessage() != null)
-                user = userer.findUserById(update.getMessage().getChatId());
-            if (update.getCallbackQuery() != null)
-                user = userer.findUserById(update.getCallbackQuery().getFrom().getId());
+            String smileBlush = EmojiParser.parseToUnicode(":blush:");
+            user = userer.findUserById(getChatIdFromUpdate(update));
             report = "Данные о пользователе найдены " + smileBlush;
             log.info(report + System.lineSeparator() + user);
         } catch (Exception e) {
-            report = "Не удалось получить данные о пользователе с id: " + update.getMessage().getChatId() + ". Возможно пользователь не зарегистрирован.";
+            report = "Не удалось получить данные о пользователе. Возможно пользователь не зарегистрирован или есть проблемы с БД.";
             log.error(report + System.lineSeparator() + e.getMessage());
         }
 
-        return user;
+        return report;
     }
 
     public User createAndRegisterUser(Update update) {
@@ -361,24 +389,26 @@ public class FileManager {
         return user;
     }
 
-    public User deleteUser(Update update) {
+    /**
+     * Удаляет пользователя из БД
+     *
+     * @param update объект обновления
+     * @return пользователь
+     */
+    public String deleteUser(Update update) {
         String report = null;
-        User user = findUser(update);
-        if (user != null) {
-            try {
-                user = userer.deleteUser(user);
-                report = "Данные о пользователе удалены." + System.lineSeparator() + user.toString();
-                log.info(report);
-            } catch (Exception e) {
-                report = "Не удалось удалить данные о пользователе.";
-                log.error(report);
-            }
-        } else {
-            report = "Данных о пользователе не найдено.";
-            log.error(report);
+        User user = null;
+        try {
+            user = userer.findUserById(getChatIdFromUpdate(update));
+            user = userer.deleteUser(user);
+            //todo что там с json?
+            report = "Данные о пользователе удалены." + System.lineSeparator() + user.toString();
+            log.info(report);
+        } catch (Exception e) {
+            report = "Не удалось удалить данные о пользователе. Возможно пользователь не зарегистрирован или есть проблемы с БД.";
+            log.error(report + System.lineSeparator() + e.getMessage());
         }
-
-        return user;
+        return report;
     }
 
     /**
@@ -389,7 +419,7 @@ public class FileManager {
      * @return пользователь с обновленным паролем
      */
     public User updatePackPassword(Update update, String newPackPassword) {
-        User user = findUser(update);
+        User user = userer.findUserById(getChatIdFromUpdate(update));
         if (user != null) {
             try {
                 user = userer.updatePackPassword(user, newPackPassword);
@@ -412,7 +442,7 @@ public class FileManager {
      * @return пользователь с обновленным персональным адресом
      */
     public User updatePersonalMail(Update update, String newPersonalMail) {
-        User user = findUser(update);
+        User user = userer.findUserById(getChatIdFromUpdate(update));
         if (user != null) {
             try {
                 user = userer.updatePersonalEmail(user, newPersonalMail);
@@ -435,7 +465,7 @@ public class FileManager {
      * @return пользователь с обновленным другой адрес
      */
     public User updateOtherMail(Update update, String newOtherMail) {
-        User user = findUser(update);
+        User user = userer.findUserById(getChatIdFromUpdate(update));
         if (user != null) {
             try {
                 user = userer.updateOtherEmail(user, newOtherMail);
@@ -448,6 +478,25 @@ public class FileManager {
         }
 
         return user;
+    }
+
+    protected String getUserSettings(Update update) {
+        String report = null;
+        String sep = System.lineSeparator();
+        try {
+            User user = userer.findUserById(getChatIdFromUpdate(update));
+
+            report = "Личные настройки:" + sep +
+                    "---" + sep +
+                    "Пароль (упаковка, распаковка и т.п.): " + user.getPackPassword() + sep +
+                    "Личная почта (для получения на неё писем): " + user.getPersonalEmail() + sep +
+                    "Другая почта (для отправки на неё писем): " + user.getOtherEmail() + sep;
+            log.info("Личные настройки пользователя получены." + System.lineSeparator());
+        } catch (Exception e) {
+            report = "Не удалось получить личные настройки.";
+            log.error(report + sep + e.getMessage());
+        }
+        return report;
     }
 
     //endregion
@@ -510,6 +559,44 @@ public class FileManager {
         return report;
     }
 
+    /**
+     * Отправляет письмо с вложением на личную почту
+     *
+     * @param fileDir элемент файловой системы, для отправки
+     * @param update  объект обновления
+     * @return отчёт отправки
+     */
+    protected String sendEmailPersonal(FileDir fileDir, Update update) {
+        String report = null;
+        try {
+            String recipient = userer.findUserById(getChatIdFromUpdate(update)).getPersonalEmail();
+            report = sendEmailWithAttachment(fileDir, recipient);
+        } catch (Exception e) {
+            report = "Не удалось отправить письмо с вложением (или получить личную почту). ";
+            log.error(report + System.lineSeparator() + e.getMessage());
+        }
+        return report;
+    }
+
+    /**
+     * Отправляет письмо с вложением на другую почту
+     *
+     * @param fileDir элемент файловой системы, для отправки
+     * @param update  объект обновления
+     * @return отчёт отправки
+     */
+    protected String sendEmailOther(FileDir fileDir, Update update) {
+        String report = null;
+        try {
+            String recipient = userer.findUserById(getChatIdFromUpdate(update)).getOtherEmail();
+            report = sendEmailWithAttachment(fileDir, recipient);
+        } catch (Exception e) {
+            report = "Не удалось отправить письмо с вложением (или получить другую почту). ";
+            log.error(report + System.lineSeparator() + e.getMessage());
+        }
+        return report;
+    }
+
     //endregion
 
     //region РАБОТА С АРХИВАМИ
@@ -556,6 +643,26 @@ public class FileManager {
     }
 
     /**
+     * Упаковывает файл или папку (метод с паролем - перегрузка без указания пароля).
+     *
+     * @param sourceFileDir элемент файловой системы, для которого работает метод
+     * @param update        объект обновления
+     * @return отчет об упаковке
+     */
+    public String zipFileDirWithPassword(FileDir sourceFileDir, Update update) {
+        String report = null;
+        try {
+            String password = userer.findUserById(getChatIdFromUpdate(update)).getPackPassword();
+            report = zipFileDirWithPassword(sourceFileDir, password);
+        } catch (Exception e) {
+            report = "Не удалось получить пароль или не удалось упаковать файл/папку (метод с паролем - перегрузка без указания пароля): " + System.lineSeparator()
+                    + sourceFileDir.getFdPath();
+            log.error(report + System.lineSeparator() + e.getMessage());
+        }
+        return report;
+    }
+
+    /**
      * Распаковывает файл или папку (метод без пароля).
      * Если в родительской папке архива есть файлы или папки с именами, как в архиве, то они будут заменены.
      *
@@ -594,6 +701,27 @@ public class FileManager {
             log.info(report);
         } catch (Exception e) {
             report = "Не удалось распаковать файл или папку (метод с паролем): " + System.lineSeparator()
+                    + sourceFileDir.getFdPath();
+            log.error(report + System.lineSeparator() + e.getMessage());
+        }
+        return report;
+    }
+
+    /**
+     * Распаковывает файл или папку (метод с паролем - перегрузка без указания пароля).
+     * Если в родительской папке архива есть файлы или папки с именами, как в архиве, то они будут заменены.
+     *
+     * @param sourceFileDir элемент файловой системы, для которого работает метод
+     * @param update        объект обновления
+     * @return отчет о распаковке
+     */
+    public String unzipFileDirWithPassword(FileDir sourceFileDir, Update update) {
+        String report = null;
+        try {
+            String password = userer.findUserById(getChatIdFromUpdate(update)).getPackPassword();
+            report = unzipFileDirWithPassword(sourceFileDir, password);
+        } catch (Exception e) {
+            report = "Не удалось получить пароль или не удалось распаковать файл/папку (метод с паролем - перегрузка без указания пароля): " + System.lineSeparator()
                     + sourceFileDir.getFdPath();
             log.error(report + System.lineSeparator() + e.getMessage());
         }
@@ -720,6 +848,7 @@ public class FileManager {
 
     /**
      * Отложенный запуск копии бота и завершение текущей
+     *
      * @return отчет о выполнении
      */
     protected String botReset() {
