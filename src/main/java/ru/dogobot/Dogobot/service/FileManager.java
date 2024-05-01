@@ -321,45 +321,30 @@ public class FileManager {
      * @return результат поиска
      */
     public String findUserOrRegister(Update update) {
+        String smileBlush = EmojiParser.parseToUnicode(":blush:");
         String report = null;
         try {
-            String smileBlush = EmojiParser.parseToUnicode(":blush:");
-            if (userer.findUserById(getChatIdFromUpdate(update)) != null) {
-                report = "Данные о пользователе найдены. Вы можете проверить их корректность вызвав соответствующую команду из меню" + smileBlush;
-            } else {
-                User user = createAndRegisterUser(update);
-                report = "Пользователь " + user.getUserName() + " успешно зарегистрирован!" + smileBlush;
-            }
+            User user = userer.findUserById(getChatIdFromUpdate(update));
+            report = "Пользователь " + user.getUserName() + " уже зарегистрирован. Вы можете проверить корректность данных, вызвав соответствующую команду из меню" + smileBlush;
             log.info(report);
         } catch (Exception e) {
-            report = "При поиске пользователя произошла ошибка. Возможно пользователь не зарегистрирован или есть проблемы с БД..";
-            log.error(report + System.lineSeparator() + e.getMessage());
+            try {
+                User user = createAndRegisterUser(update);
+                report = "Пользователь " + user.getUserName() + " успешно зарегистрирован!" + smileBlush;
+            } catch (Exception ex) {
+                report = "При регистрации произошла ошибка. Пользователь не зарегистрирован или есть проблемы с БД." + smileBlush;
+                log.error(report + System.lineSeparator() + ex.getMessage());
+            }
         }
         return report;
     }
 
     /**
-     * Получает информацию о пользователе из БД.
+     * Создание и регистрация пользователя в БД.
      *
      * @param update объект обновления
-     * @return информация о пользователе
+     * @return пользователь
      */
-    public String getUserInfo(Update update) {
-        String report = null;
-        User user = null;
-        try {
-            String smileBlush = EmojiParser.parseToUnicode(":blush:");
-            user = userer.findUserById(getChatIdFromUpdate(update));
-            report = "Данные о пользователе найдены " + smileBlush;
-            log.info(report + System.lineSeparator() + user);
-        } catch (Exception e) {
-            report = "Не удалось получить данные о пользователе. Возможно пользователь не зарегистрирован или есть проблемы с БД.";
-            log.error(report + System.lineSeparator() + e.getMessage());
-        }
-
-        return report;
-    }
-
     public User createAndRegisterUser(Update update) {
         String smileBlush = EmojiParser.parseToUnicode(":blush:");
         String report = null;
@@ -383,10 +368,31 @@ public class FileManager {
         } catch (Exception e) {
             report = "Не удалось зарегистрировать пользователя.";
             log.error(report + System.lineSeparator() + e.getMessage());
-            //todo в теории везде, где ошибка, надо отчитаться пользователю, но не факт что прямо в этом методе
         }
 
         return user;
+    }
+
+    /**
+     * Получает информацию о пользователе из БД.
+     *
+     * @param update объект обновления
+     * @return информация о пользователе
+     */
+    public String getUserInfo(Update update) {
+        String report = null;
+        User user = null;
+        try {
+            String smileBlush = EmojiParser.parseToUnicode(":blush:");
+            user = userer.findUserById(getChatIdFromUpdate(update));
+            report = "Данные о пользователе найдены " + smileBlush + System.lineSeparator() + user;
+            log.info(report);
+        } catch (Exception e) {
+            report = "Не удалось получить данные о пользователе. Возможно пользователь не зарегистрирован или есть проблемы с БД.";
+            log.error(report + System.lineSeparator() + e.getMessage());
+        }
+
+        return report;
     }
 
     /**
@@ -397,12 +403,9 @@ public class FileManager {
      */
     public String deleteUser(Update update) {
         String report = null;
-        User user = null;
         try {
-            user = userer.findUserById(getChatIdFromUpdate(update));
-            user = userer.deleteUser(user);
-            //todo что там с json?
-            report = "Данные о пользователе удалены." + System.lineSeparator() + user.toString();
+            userer.deleteUser(getChatIdFromUpdate(update));
+            report = "Данные о пользователе удалены из БД.";
             log.info(report);
         } catch (Exception e) {
             report = "Не удалось удалить данные о пользователе. Возможно пользователь не зарегистрирован или есть проблемы с БД.";
@@ -418,20 +421,18 @@ public class FileManager {
      * @param newPackPassword новый пароль
      * @return пользователь с обновленным паролем
      */
-    public User updatePackPassword(Update update, String newPackPassword) {
-        User user = userer.findUserById(getChatIdFromUpdate(update));
-        if (user != null) {
-            try {
-                user = userer.updatePackPassword(user, newPackPassword);
-                log.info("Попытка обновления пароля упаковки/распаковки для пользователя прошла без исключений. " + System.lineSeparator() + user.toString());
-            } catch (Exception e) {
-                log.error("При попытке обновления пароля упаковки/распаковки для пользователя возникло исключение. " + System.lineSeparator() + e.getMessage());
-            }
-        } else {
-            log.error("Данных о пользователе не найдено.");
+    public String updatePackPassword(Update update, String newPackPassword) {
+        String report = null;
+        User user = null;
+        try {
+            user = userer.updatePackPassword(getChatIdFromUpdate(update), newPackPassword);
+            report = "Пароль упаковки/распаковки успешно обновлен." + System.lineSeparator() + user.getPackPassword();
+            log.info(report);
+        } catch (Exception e) {
+            report = "При попытке обновления пароля упаковки/распаковки для пользователя возникло исключение.";
+            log.error(report + System.lineSeparator() + e.getMessage());
         }
-
-        return user;
+        return report;
     }
 
     /**
@@ -441,20 +442,18 @@ public class FileManager {
      * @param newPersonalMail новый персональный адрес
      * @return пользователь с обновленным персональным адресом
      */
-    public User updatePersonalMail(Update update, String newPersonalMail) {
-        User user = userer.findUserById(getChatIdFromUpdate(update));
-        if (user != null) {
-            try {
-                user = userer.updatePersonalEmail(user, newPersonalMail);
-                log.info("Попытка обновления персонального адреса электронной почты для пользователя прошла без исключений. " + System.lineSeparator() + user.toString());
-            } catch (Exception e) {
-                log.error("При попытке обновления персонального адреса электронной почты для пользователя возникло исключение. " + System.lineSeparator() + e.getMessage());
-            }
-        } else {
-            log.error("Данных о пользователе не найдено.");
+    public String updatePersonalMail(Update update, String newPersonalMail) {
+        String report = null;
+        User user = null;
+        try {
+            user = userer.updatePersonalEmail(getChatIdFromUpdate(update), newPersonalMail);
+            report = "Персональный адрес электронной почты успешно обновлен." + System.lineSeparator() + user.getPersonalEmail();
+            log.info(report);
+        } catch (Exception e) {
+            report = "При попытке обновления персонального адреса электронной почты для пользователя возникло исключение.";
+            log.error(report + System.lineSeparator() + e.getMessage());
         }
-
-        return user;
+        return report;
     }
 
     /**
@@ -464,28 +463,31 @@ public class FileManager {
      * @param newOtherMail новый другой адрес
      * @return пользователь с обновленным другой адрес
      */
-    public User updateOtherMail(Update update, String newOtherMail) {
-        User user = userer.findUserById(getChatIdFromUpdate(update));
-        if (user != null) {
-            try {
-                user = userer.updateOtherEmail(user, newOtherMail);
-                log.info("Попытка обновления другого адреса электронной почты для пользователя прошла без исключений. " + System.lineSeparator() + user.toString());
-            } catch (Exception e) {
-                log.error("При попытке обновления другого адреса электронной почты для пользователя возникло исключение. " + System.lineSeparator() + e.getMessage());
-            }
-        } else {
-            log.error("Данных о пользователе не найдено.");
+    public String updateOtherMail(Update update, String newOtherMail) {
+        String report = null;
+        User user = null;
+        try {
+            user = userer.updateOtherEmail(getChatIdFromUpdate(update), newOtherMail);
+            report = "Другой адрес электронной почты успешно обновлен." + System.lineSeparator() + user.getOtherEmail();
+            log.info(report);
+        } catch (Exception e) {
+            report = "При попытке обновления другого адреса электронной почты для пользователя возникло исключение.";
+            log.error(report + System.lineSeparator() + e.getMessage());
         }
-
-        return user;
+        return report;
     }
 
+    /**
+     * Получает личные настройки пользователя
+     *
+     * @param update объект обновления
+     * @return строку с личными настройками
+     */
     protected String getUserSettings(Update update) {
         String report = null;
         String sep = System.lineSeparator();
         try {
             User user = userer.findUserById(getChatIdFromUpdate(update));
-
             report = "Личные настройки:" + sep +
                     "---" + sep +
                     "Пароль (упаковка, распаковка и т.п.): " + user.getPackPassword() + sep +
@@ -572,7 +574,7 @@ public class FileManager {
             String recipient = userer.findUserById(getChatIdFromUpdate(update)).getPersonalEmail();
             report = sendEmailWithAttachment(fileDir, recipient);
         } catch (Exception e) {
-            report = "Не удалось отправить письмо с вложением (или получить личную почту). ";
+            report = "Не удалось отправить письмо с вложением (или получить адрес личной почты). ";
             log.error(report + System.lineSeparator() + e.getMessage());
         }
         return report;
@@ -591,7 +593,7 @@ public class FileManager {
             String recipient = userer.findUserById(getChatIdFromUpdate(update)).getOtherEmail();
             report = sendEmailWithAttachment(fileDir, recipient);
         } catch (Exception e) {
-            report = "Не удалось отправить письмо с вложением (или получить другую почту). ";
+            report = "Не удалось отправить письмо с вложением (или получить адрес другой почты). ";
             log.error(report + System.lineSeparator() + e.getMessage());
         }
         return report;

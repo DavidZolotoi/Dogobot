@@ -17,8 +17,6 @@ import java.util.NoSuchElementException;
 @Data
 public class Userer {
 
-    //todo перепроверить возвраты из методов, возможно в них стоит обратиться к БД
-
     @Autowired
     private UserRepository userRepository;
 
@@ -35,42 +33,36 @@ public class Userer {
      * @throws NoSuchElementException если пользователь не найден
      */
     protected User findUserById(Long chatId) throws NoSuchElementException {
-        User user = userRepository.findById(chatId).get();
-        return user;
+        return userRepository.findById(chatId).get();
     }
 
     /**
      * Регистрирует пользователя в базе данных
      * @param userForRegister пользователь
      * @return пользователь для регистрации
-     * @throws Exception если возникли исключения
      */
-    protected User registerUser(User userForRegister) throws Exception {
-
-        User user = userRepository.save(userForRegister);
-
-        return user;
+    protected User registerUser(User userForRegister) {
+        return userRepository.save(userForRegister);
     }
 
     /**
      * Удаляет пользователя из базы данных
-     * @param user пользователь, которого нужно удалить
-     * @return пользователь, который был удален
-     * @throws Exception если возникли исключения
+     * @param chatId Id чата
      */
-    protected User deleteUser(User user) throws Exception {
+    protected void deleteUser(Long chatId) {
+        User user = findUserById(chatId);
         userRepository.delete(user);
-        return user;
+        user = null;
     }
 
     /**
      * Обновляет пароль пользователя в базе данных
-     * @param user пользователь, пароль которого нужно обновить
+     * @param chatId Id чата
      * @param newPackPassword новый пароль
      * @return пользователь
-     * @throws Exception если возникли исключения
      */
-    protected User updatePackPassword(User user, String newPackPassword) throws Exception {
+    protected User updatePackPassword(Long chatId, String newPackPassword) {
+        User user = findUserById(chatId);
         //в конфигурациях
         if (!userConfig.updateConfigPackPassword(newPackPassword)) {
             return user;
@@ -85,12 +77,12 @@ public class Userer {
 
     /**
      * Обновляет персональный адрес электронной почты пользователя
-     * @param user пользователь, персональный адрес электронной почты которого нужно обновить
+     * @param chatId Id чата
      * @param newPersonalMail новый персональный адрес электронной почты
      * @return пользователь
-     * @throws Exception если возникли исключения
      */
-    protected User updatePersonalEmail(User user, String newPersonalMail) throws Exception {
+    protected User updatePersonalEmail(Long chatId, String newPersonalMail) {
+        User user = findUserById(chatId);
         //в конфигурациях
         if(!userConfig.updateConfigPersonalEmail(newPersonalMail)) {
             return user;
@@ -105,12 +97,12 @@ public class Userer {
 
     /**
      * Обновляет другой адрес электронной почты пользователя
-     * @param user пользователь, другой адрес электронной почты которого нужно обновить
+     * @param chatId Id чата
      * @param newOtherMail новый другой адрес электронной почты
      * @return пользователь
-     * @throws Exception если возникли исключения
      */
-    protected User updateOtherEmail(User user, String newOtherMail) throws Exception {
+    protected User updateOtherEmail(Long chatId, String newOtherMail) {
+        User user = findUserById(chatId);
         //в конфигурациях
         if (!userConfig.updateConfigOtherEmail(newOtherMail)) {
             return user;

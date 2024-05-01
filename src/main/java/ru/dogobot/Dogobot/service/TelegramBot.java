@@ -484,17 +484,12 @@ public class TelegramBot extends TelegramLongPollingBot {
      */
     private void commandSetPassHandler(Update update) {
         long chatId = update.getMessage().getChatId();
-        User user = fileManager.updatePackPassword(
+        String report = fileManager.updatePackPassword(
                 update,
                 update.getMessage().getText()
                         .substring(OtherCommandEnum.SETPASS.key.length())
         );
-        sendMessageWithoutKeyboard(
-                chatId,
-                "Произведена попытка смены пароля (упаковки/распаковки)."
-                        + System.lineSeparator()
-                        + "Актуальный пароль: " + user.getPackPassword()
-        );
+        sendMessageWithoutKeyboard(chatId, report);
     }
 
     /**
@@ -504,17 +499,12 @@ public class TelegramBot extends TelegramLongPollingBot {
      */
     private void commandSetPersonalMailHandler(Update update) {
         long chatId = update.getMessage().getChatId();
-        User user = fileManager.updatePersonalMail(
+        String report = fileManager.updatePersonalMail(
                 update,
                 update.getMessage().getText()
                         .substring(OtherCommandEnum.SETPMAIL.key.length()).trim()
         );
-        sendMessageWithoutKeyboard(
-                chatId,
-                "Произведена попытка смены персонального адреса электронной почты (для получения на неё писем)."
-                        + System.lineSeparator()
-                        + "Актуальный адрес: " + user.getPersonalEmail()
-        );
+        sendMessageWithoutKeyboard(chatId, report);
     }
 
     /**
@@ -524,17 +514,12 @@ public class TelegramBot extends TelegramLongPollingBot {
      */
     private void commandSetOtherMailHandler(Update update) {
         long chatId = update.getMessage().getChatId();
-        User user = fileManager.updateOtherMail(
+        String report = fileManager.updateOtherMail(
                 update,
                 update.getMessage().getText()
                         .substring(OtherCommandEnum.SETOMAIL.key.length()).trim()
         );
-        sendMessageWithoutKeyboard(
-                chatId,
-                "Произведена попытка смены другого адреса электронной почты (для отправки на неё писем)."
-                        + System.lineSeparator()
-                        + "Актуальный адрес: " + user.getOtherEmail()
-        );
+        sendMessageWithoutKeyboard(chatId, report);
     }
 
     /**
