@@ -79,7 +79,7 @@ public class FileManager {
      * @return объект FileDir со всеми данными
      */
     protected FileDir getFileDirWithScan(String inputPath) {
-        try{
+        try {
             this.fileDir = getFileDirWithoutScan(inputPath);
             return scanFileDirAndSaveItemData(this.fileDir);
         } catch (Exception e) {
@@ -95,7 +95,7 @@ public class FileManager {
      * @return объект FileDir со всеми данными
      */
     protected FileDir getFileDirHomeWithScan() {
-        try{
+        try {
             this.fileDir = getFileDirWithoutScan(System.getProperty("user.home") + "/forTest"); //todo убрать forTest
             return scanFileDirAndSaveItemData(this.fileDir);
         } catch (Exception e) {
@@ -112,7 +112,7 @@ public class FileManager {
      */
     protected FileDir getFileDirWithoutScan(String inputPath) {
         FileDir fileDir = new FileDir();
-        fileDir.setFdJavaIoFile(new File(inputPath));
+        fileDir.setFdJavaIoFile(getPropertyFdJavaIoFile(inputPath));
         fileDir.setFdId(getPropertyFdId(fileDir));
         fileDir.setFdType(getPropertyFdType(fileDir));
         fileDir.setFdNameOriginal(getPropertyFdNameOriginal(fileDir));
@@ -127,7 +127,21 @@ public class FileManager {
     }
 
     /**
+     * Получает java.io.File из переданного на вход пути inputPath
+     * @param inputPath путь к элементу файловой системы
+     * @return экземпляр java.io.File
+     */
+    private File getPropertyFdJavaIoFile(String inputPath) {
+        if (inputPath == null
+                || inputPath.isBlank()
+                || !(new File(inputPath).exists())
+        ) throw new IllegalArgumentException("Путь к элементу файловой системы некорректен.");
+        return new File(inputPath);
+    }
+
+    /**
      * Получает (создает) идентификатор для FileDir.
+     *
      * @param fileDir элемент файловой системы, для которого работает метод
      * @return идентификатор = случайная неповторимая строка на основе текущей даты и части строкового окончания.
      * Длина строки 30 символов, что вписывается в различные требования.
@@ -142,6 +156,7 @@ public class FileManager {
 
     /**
      * Получает (определяет) тип для FileDir.
+     *
      * @param fileDir элемент файловой системы, для которого работает метод
      * @return тип (файл или папка) - enum FileDir.FDType
      */
@@ -155,6 +170,7 @@ public class FileManager {
 
     /**
      * Получает оригинальное название FileDir.
+     *
      * @param fileDir элемент файловой системы, для которого работает метод
      * @return оригинальное название
      */
@@ -165,6 +181,7 @@ public class FileManager {
     /**
      * Проверяет и в случае необходимости корректирует оригинальное название для соответствия требованиям к InlineKeyboardButton.
      * Корректировка происходит путём удаления неразрешенных символов и уменьшения длины строки до максимально допустимой.
+     *
      * @param fileDir элемент файловой системы, для которого работает метод
      * @return проверенное и корректное название для InlineKeyboardButton
      */
@@ -200,6 +217,7 @@ public class FileManager {
 
     /**
      * Получает (задаёт) команду CallbackData для InlineKeyboardButton.
+     *
      * @param fileDir элемент файловой системы, для которого работает метод
      * @return CallbackData команда = FileDir.getFdId()
      */
@@ -209,6 +227,7 @@ public class FileManager {
 
     /**
      * Получает полный путь к FileDir.
+     *
      * @param fileDir элемент файловой системы, для которого работает метод
      * @return полный путь
      */
@@ -218,6 +237,7 @@ public class FileManager {
 
     /**
      * Получает дату последнего изменения FileDir.
+     *
      * @param fileDir элемент файловой системы, для которого работает метод
      * @return дата последнего изменения
      */
@@ -227,6 +247,7 @@ public class FileManager {
 
     /**
      * Получает занимаемый размер FileDir.
+     *
      * @param fileDir элемент файловой системы, для которого работает метод
      * @return занимаемый размер
      */
@@ -240,6 +261,7 @@ public class FileManager {
      * - элемент родительской папки;
      * - элемент текущей папки;
      * - отсортированные элементы внутри папки (папки перед файлами).
+     *
      * @param fileDir элемент файловой системы, для которого работает метод
      * @return отсортированный массив элементов файловой системы, включая текущий и родительский
      */
@@ -278,6 +300,7 @@ public class FileManager {
 
     /**
      * Сканирует папку и сохраняет данные о содержимом в FileDir.
+     *
      * @param fileDir элемент файловой системы, для которого работает метод
      * @return FileDir, заполненный всеми данными о содержимом
      */
@@ -307,6 +330,7 @@ public class FileManager {
 
     /**
      * Получает ID чата из объекта обновления (как Message, так и CallbackQuery).
+     *
      * @param update объект обновления
      * @return ID чата
      */
@@ -323,6 +347,7 @@ public class FileManager {
 
     /**
      * Поиск пользователя в БД или его регистрация в случае отсутствия.
+     *
      * @param update объект обновления
      * @return результат поиска
      */
@@ -347,6 +372,7 @@ public class FileManager {
 
     /**
      * Создание и регистрация пользователя в БД.
+     *
      * @param update объект обновления
      * @return пользователь
      */
@@ -380,6 +406,7 @@ public class FileManager {
 
     /**
      * Получает информацию о пользователе из БД.
+     *
      * @param update объект обновления
      * @return информация о пользователе
      */
@@ -401,6 +428,7 @@ public class FileManager {
 
     /**
      * Удаляет пользователя из БД
+     *
      * @param update объект обновления
      * @return пользователь
      */
@@ -419,7 +447,8 @@ public class FileManager {
 
     /**
      * Обновляет пароль упаковки/распаковки
-     * @param update объект обновления
+     *
+     * @param update          объект обновления
      * @param newPackPassword новый пароль
      * @return пользователь с обновленным паролем
      */
@@ -439,7 +468,8 @@ public class FileManager {
 
     /**
      * Обновляет персональный адрес электронной почты
-     * @param update объект обновления
+     *
+     * @param update          объект обновления
      * @param newPersonalMail новый персональный адрес
      * @return пользователь с обновленным персональным адресом
      */
@@ -459,7 +489,8 @@ public class FileManager {
 
     /**
      * Обновляет другой адрес электронной почты
-     * @param update объект обновления
+     *
+     * @param update       объект обновления
      * @param newOtherMail новый другой адрес
      * @return пользователь с обновленным другой адрес
      */
@@ -479,6 +510,7 @@ public class FileManager {
 
     /**
      * Получает личные настройки пользователя
+     *
      * @param update объект обновления
      * @return строку с личными настройками
      */
@@ -504,6 +536,7 @@ public class FileManager {
 
     /**
      * Делает скриншот
+     *
      * @return путь к скриншоту
      */
     protected String printScreen() {
@@ -521,7 +554,8 @@ public class FileManager {
 
     /**
      * Отправляет письмо по электронной почте с вложением fileDir
-     * @param fileDir элемент файловой системы, для отправки
+     *
+     * @param fileDir   элемент файловой системы, для отправки
      * @param recipient адрес получателя
      * @return отчёт отправки
      */
@@ -559,6 +593,7 @@ public class FileManager {
 
     /**
      * Отправляет письмо с вложением на личную почту
+     *
      * @param fileDir элемент файловой системы, для отправки
      * @param update  объект обновления
      * @return отчёт отправки
@@ -577,6 +612,7 @@ public class FileManager {
 
     /**
      * Отправляет письмо с вложением на другую почту
+     *
      * @param fileDir элемент файловой системы, для отправки
      * @param update  объект обновления
      * @return отчёт отправки
@@ -599,6 +635,7 @@ public class FileManager {
 
     /**
      * Упаковывает файл или папку (метод без пароля)
+     *
      * @param sourceFileDir элемент файловой системы, для которого работает метод
      * @return отчет об упаковке
      */
@@ -618,6 +655,7 @@ public class FileManager {
 
     /**
      * Упаковывает файл или папку (метод с паролем).
+     *
      * @param sourceFileDir элемент файловой системы, для которого работает метод
      * @param password      пароль для упаковки
      * @return отчет об упаковке
@@ -638,6 +676,7 @@ public class FileManager {
 
     /**
      * Упаковывает файл или папку (метод с паролем - перегрузка без указания пароля).
+     *
      * @param sourceFileDir элемент файловой системы, для которого работает метод
      * @param update        объект обновления
      * @return отчет об упаковке
@@ -658,6 +697,7 @@ public class FileManager {
     /**
      * Распаковывает файл или папку (метод без пароля).
      * Если в родительской папке архива есть файлы или папки с именами, как в архиве, то они будут заменены.
+     *
      * @param sourceFileDir элемент файловой системы, для которого работает метод.
      * @return отчет о распаковке
      */
@@ -679,6 +719,7 @@ public class FileManager {
     /**
      * Распаковывает файл или папку (метод с паролем).
      * Если в родительской папке архива есть файлы или папки с именами, как в архиве, то они будут заменены.
+     *
      * @param sourceFileDir элемент файловой системы, для которого работает метод
      * @param password      пароль для распаковки
      * @return отчет о распаковке
@@ -701,6 +742,7 @@ public class FileManager {
     /**
      * Распаковывает файл или папку (метод с паролем - перегрузка без указания пароля).
      * Если в родительской папке архива есть файлы или папки с именами, как в архиве, то они будут заменены.
+     *
      * @param sourceFileDir элемент файловой системы, для которого работает метод
      * @param update        объект обновления
      * @return отчет о распаковке
@@ -724,8 +766,9 @@ public class FileManager {
 
     /**
      * Переименовывает папку или файл
+     *
      * @param oldFileDir элемент файловой системы для которого работает метод
-     * @param newName новое имя
+     * @param newName    новое имя
      * @return отчет о переименовании
      */
     public String fileDirRename(FileDir oldFileDir, String newName) {
@@ -746,7 +789,8 @@ public class FileManager {
 
     /**
      * Перемещает папку или файл
-     * @param oldFileDir элемент файловой системы для которого работает метод
+     *
+     * @param oldFileDir    элемент файловой системы для которого работает метод
      * @param newPathParent путь к родительской папке нового места
      * @return отчет о перемещении
      */
@@ -771,7 +815,8 @@ public class FileManager {
 
     /**
      * Копирует папку или файл
-     * @param fileDire элемент файловой системы для которого работает метод
+     *
+     * @param fileDire      элемент файловой системы для которого работает метод
      * @param newPathParent путь к родительской папке нового места
      * @return отчет о копировании
      */
@@ -797,6 +842,7 @@ public class FileManager {
 
     /**
      * Удаляет папку или файл
+     *
      * @param fileDir элемент файловой системы для которого работает метод
      * @return отчет об удалении
      */
@@ -816,6 +862,7 @@ public class FileManager {
 
     /**
      * Запускает команду(ы) в терминале
+     *
      * @param script команда(ы)
      * @return отчет о выполнении
      */
@@ -837,9 +884,9 @@ public class FileManager {
      */
     protected String botReset() {
         String report;
-        String javaBin = System.getProperty("java.home") + File.separator + "bin" + File.separator + "java";
-        String currentJar = new File(new File("."), "Dogobot-0.0.1-SNAPSHOT.jar").getAbsolutePath();
         try {
+            String javaBin = System.getProperty("java.home") + File.separator + "bin" + File.separator + "java";
+            String currentJar = new File(new File("."), "Dogobot-0.0.1-SNAPSHOT.jar").getAbsolutePath();
             String sleep = "sleep 5";
             if (System.getProperty("os.name").toLowerCase().contains("win")) {
                 sleep = "timeout /t 5 > nul";
@@ -849,8 +896,9 @@ public class FileManager {
             log.info(report);
             System.exit(0);
         } catch (Exception e) {
-            report = "Не удалось отложенно запустить копию бота.";
+            report = "Не удалось отложенно запустить копию бота. Выключаю.";
             log.error(report + " Подробности:" + System.lineSeparator() + e.getMessage());
+            System.exit(0);
         }
         return report;
     }

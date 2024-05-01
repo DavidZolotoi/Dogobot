@@ -22,6 +22,6 @@ public class BotConfig {
     Long authorId;
 
     @Value("${telegrambot.ownerId}")
-    Long ownerId;   //todo может в Json его?
+    Long ownerId;
 
 }

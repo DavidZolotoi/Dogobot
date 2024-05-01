@@ -65,15 +65,14 @@ public class User {
     @Override
     public String toString() {
         String sep = System.lineSeparator();
-        //todo выводить только то, что не null
         return "Данные о пользователе." + sep +
-                "Id=" + chatId + ", " + sep
-                + "First Name='" + firstName + '\'' + ", " + sep
-                + "Last Name='" + lastName + '\'' + ", " + sep
-                + "User Name='" + userName + '\'' + ", " + sep
-                + "Pack Password='" + packPassword + '\'' + ", " + sep
-                + "Personal Email='" + personalEmail + '\'' + ", " + sep
-                + "Other Email='" + otherEmail + '\'' + ", " + sep
-                + "Registered at=" + registeredAt;
+                "Id=" + ((chatId == null)? "null" : chatId) + ", " + sep
+                + "First Name='" + ((firstName == null)? "null" : firstName) + '\'' + ", " + sep
+                + "Last Name='" + ((lastName == null)? "null" : lastName) + '\'' + ", " + sep
+                + "User Name='" + ((userName == null)? "null" : userName) + '\'' + ", " + sep
+                + "Pack Password='" + ((packPassword == null)? "null" : packPassword) + '\'' + ", " + sep
+                + "Personal Email='" + ((personalEmail == null)? "null" : personalEmail) + '\'' + ", " + sep
+                + "Other Email='" + ((otherEmail == null)? "null" : otherEmail) + '\'' + ", " + sep
+                + "Registered at=" + ((registeredAt == null)? "null" : registeredAt);
     }
 }

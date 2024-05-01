@@ -63,7 +63,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     @AllArgsConstructor
     public enum ReplyKeyboardEnum {
         ROW1_BUTTON1("Домой", "Показать домашнюю папку"),
-        ROW1_BUTTON2("Помощь", "Помощь");
+        ROW1_BUTTON2("Настройки", "Настройки");
 
         private final String key;
         private final String description;
@@ -90,7 +90,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         private final String description;
     }
 
-    private long fileDirMenuMessageId;
+    private long fileDirMessageId;
 
     //endregion
 
@@ -106,6 +106,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     /**
      * Заполняет меню бота командами, считывая их из BotMenuEnum
+     *
      * @return коллекцию команд
      */
     private List<BotCommand> getBotMenu() {
@@ -155,14 +156,21 @@ public class TelegramBot extends TelegramLongPollingBot {
      * @return true - обратился владелец
      */
     private boolean ownerFilter(Update update) {
-        Long ownerId = botConfig.getOwnerId();
-        return (update.getMessage() != null && update.getMessage().getFrom().getId().equals(ownerId)) ||
-                (update.getCallbackQuery() != null && update.getCallbackQuery().getFrom().getId().equals(ownerId));
+        boolean result;
+        try {
+            Long ownerId = botConfig.getOwnerId();
+            result = (update.getMessage() != null && update.getMessage().getFrom().getId().equals(ownerId)) ||
+                    (update.getCallbackQuery() != null && update.getCallbackQuery().getFrom().getId().equals(ownerId));
+        } catch (Exception e) {
+            log.error("Не могу определить владельца: " + e.getMessage());
+            result = false;
+        }
+        return result;
     }
 
     //endregion
 
-    //region Обработчики входной информации
+    //region Обработчики команд со слешем
 
     /**
      * Обработчик текстовых сообщений
@@ -190,10 +198,10 @@ public class TelegramBot extends TelegramLongPollingBot {
         } else if (messageText.equals(BotMenuEnum.DELETEDATA.getKey())) {
             commandDeletedataHandler(update);
 
-        } else if (messageText.equals(BotMenuEnum.HELP.getKey()) || messageText.equals(ReplyKeyboardEnum.ROW1_BUTTON2.key)) {
+        } else if (messageText.equals(BotMenuEnum.HELP.getKey())) {
             commandHelpHandler(update);
 
-        } else if (messageText.equals(BotMenuEnum.SETTINGS.getKey())) {
+        } else if (messageText.equals(BotMenuEnum.SETTINGS.getKey()) || messageText.equals(ReplyKeyboardEnum.ROW1_BUTTON2.key)) {
             commandSettingsHandler(update);
 
         } else if (messageText.equals(BotMenuEnum.RESET.getKey())) {
@@ -203,7 +211,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             commandExitHandler(update);
 
         } else {
-            //варианты с дробью, но с аргументами
+            //варианты команд со слешем, но с аргументами
             if (isCommand(update, OtherCommandEnum.GOTO)) {
                 commandGotoArgsHandler(update);
 
@@ -246,185 +254,9 @@ public class TelegramBot extends TelegramLongPollingBot {
         return update.getMessage().getText().startsWith(command.key);
     }
 
-    /**
-     * Обработчик команд Callback
-     *
-     * @param update объект обновления
-     */
-    private void handlerCallBackQuery(Update update) {
-        String callbackData = update.getCallbackQuery().getData();
-        long messageId = update.getCallbackQuery().getMessage().getMessageId();
-        long chatId = update.getCallbackQuery().getMessage().getChatId();
-
-        System.out.println(callbackData);
-
-        // если callbackData - один из пунктов словаря актуальной папки
-        if (fileManager.getCurrentPathDict().containsKey(callbackData)) {
-            FileDir targetFileDir = fileManager.getCurrentPathDict().get(callbackData);
-
-            //если нажали на кнопку МЕНЮ
-            if (targetFileDir.getFdNameInline().equals(fileManager.MENU)) {
-                sendMessageWithInlineFileDirMenu(
-                        chatId,
-                        FileManager.SELECT_MENU_ITEM,
-                        FileManager.FileDirMenu.values()
-                );
-                return;
-            }
-
-            //если нажали на кнопку на элемент файловой системы
-            targetFileDir = fileManager.getFileDirWithScan(targetFileDir.getFdPath());
-            editMessageWithInlineKeyboard(
-                    chatId,
-                    messageId,
-                    "%s: %s".formatted("Текущий путь ", targetFileDir.getFdPath()),
-                    targetFileDir
-            );
-            return;
-        }
-
-        //если нажали на кнопку "Получить информацию"
-        if (callbackData.equals(FileManager.FileDirMenu.GET_INFO.getButtonCallback())) {
-            sendMessageWithoutKeyboard(
-                    chatId,
-                    fileManager.getFileDir().toString()
-            );
-            deleteMessageWithFileDirMenu(chatId);
-            return;
-        }
-
-        //если нажали на кнопку "Получить в телеграм"
-        if (callbackData.equals(FileManager.FileDirMenu.GET_ON_TELEGRAM.getButtonCallback())) {
-            String report;
-            if (fileManager.getFileDir().getFdType().equals(FileDir.FDType.FILE)) {
-                report = sendFile(chatId, fileManager.getFileDir().getFdPath());
-            } else {
-                report = "Это папка, для отправки в телеграм, её сначала нужно упаковать в архив.";
-                log.warn(report);
-            }
-            sendMessageWithoutKeyboard(chatId, report);
-            deleteMessageWithFileDirMenu(chatId);
-            return;
-        }
-
-        //если нажали на кнопку "Получить на почту"
-        if (callbackData.equals(FileManager.FileDirMenu.GET_ON_EMAIL.getButtonCallback())) {
-            String report = fileManager.sendEmailPersonal(
-                    fileManager.getFileDir(),
-                    update
-            );
-            sendMessageWithoutKeyboard(chatId, report);
-            deleteMessageWithFileDirMenu(chatId);
-            return;
-        }
-
-        //если нажали на кнопку "Отправить на почту"
-        if (callbackData.equals(FileManager.FileDirMenu.SEND_TO_EMAIL.getButtonCallback())) {
-            String report = fileManager.sendEmailOther(
-                    fileManager.getFileDir(),
-                    update
-            );
-            sendMessageWithoutKeyboard(chatId, report);
-            deleteMessageWithFileDirMenu(chatId);
-            return;
-        }
-
-        //если нажали на кнопку "Упаковать в zip"
-        if (callbackData.equals(FileManager.FileDirMenu.PACK.getButtonCallback())) {
-            String report = fileManager.zipFileDirWithoutPassword(
-                    fileManager.getFileDir()
-            );
-            sendMessageWithoutKeyboard(chatId, report);
-            deleteMessageWithFileDirMenu(chatId);
-            return;
-        }
-
-        //если нажали на кнопку "Упаковать в zip с паролем"
-        if (callbackData.equals(FileManager.FileDirMenu.PACK_WITH_PASSWORD.getButtonCallback())) {
-            String report = fileManager.zipFileDirWithPassword(
-                    fileManager.getFileDir(),
-                    update
-            );
-            sendMessageWithoutKeyboard(chatId, report);
-            deleteMessageWithFileDirMenu(chatId);
-            return;
-        }
-
-        //если нажали "Распаковать из zip"
-        if (callbackData.equals(FileManager.FileDirMenu.UNPACK.getButtonCallback())) {
-            String report = fileManager.unzipFileDirWithoutPassword(
-                    fileManager.getFileDir()
-            );
-            sendMessageWithoutKeyboard(chatId, report);
-            deleteMessageWithFileDirMenu(chatId);
-            return;
-        }
-
-        //если нажали "Распаковать из zip с паролем"
-        if (callbackData.equals(FileManager.FileDirMenu.UNPACK_WITH_PASSWORD.getButtonCallback())) {
-            String report = fileManager.unzipFileDirWithPassword(
-                    fileManager.getFileDir(),
-                    update
-            );
-            sendMessageWithoutKeyboard(chatId, report);
-            deleteMessageWithFileDirMenu(chatId);
-            return;
-        }
-
-        //если нажали на кнопку "Переименовать"
-        if (callbackData.equals(FileManager.FileDirMenu.RENAME.getButtonCallback())) {
-            sendMessageWithoutKeyboard(
-                    chatId,
-                    "Для переименования текущего файла/папки введите команду (без кавычек и фигурных скобок) в формате '" + OtherCommandEnum.RENAME.key + " {новое имя}'"
-            );
-            deleteMessageWithFileDirMenu(chatId);
-            return;
-        }
-
-        //если нажали кнопку "Переместить"
-        if (callbackData.equals(FileManager.FileDirMenu.MOVE.getButtonCallback())) {
-            sendMessageWithoutKeyboard(
-                    chatId,
-                    "Для перемещения текущего файла/папки введите команду (без кавычек и фигурных скобок) в формате '" + OtherCommandEnum.MOVE.key + " {новый путь к папке для перемещения}'"
-            );
-            deleteMessageWithFileDirMenu(chatId);
-            return;
-        }
-
-        //если нажали кнопку "Копировать"
-        if (callbackData.equals(FileManager.FileDirMenu.COPY.getButtonCallback())) {
-            sendMessageWithoutKeyboard(
-                    chatId,
-                    "Для копирования текущего файла/папки введите команду (без кавычек и фигурных скобок) в формате '" + OtherCommandEnum.COPY.key + " {новый путь к папке для копирования}'"
-            );
-            deleteMessageWithFileDirMenu(chatId);
-            return;
-        }
-
-        //если нажали на кнопку "Удалить"
-        if (callbackData.equals(FileManager.FileDirMenu.DELETE.getButtonCallback())) {
-            String report = fileManager.fileDirDelete(
-                    fileManager.getFileDir()
-            );
-            sendMessageWithoutKeyboard(chatId, report);
-            deleteMessageWithFileDirMenu(chatId);
-            return;
-        }
-
-        //если нажали на кнопку "Убрать меню"
-        if (callbackData.equals(FileManager.FileDirMenu.REMOVE_MENU.getButtonCallback())) {
-            deleteMessageWithFileDirMenu(chatId);
-            return;
-        }
-
-        String report = "Не могу распознать нажатую кнопку " + callbackData;
-        log.error(report + callbackData);
-        sendMessageWithoutKeyboard(chatId, report);
-    }
-
     //endregion
 
-    //region Обработчики команд
+    //region Обработчики конкретных команд со слешем
 
     /**
      * Обработчик команды /start
@@ -466,7 +298,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     /**
-     * Обработчик команды /goto с аргументами (путём для перехода)
+     * Обработчик команды /goto с параметром (путём для перехода)
      *
      * @param update объект обновления
      */
@@ -475,6 +307,12 @@ public class TelegramBot extends TelegramLongPollingBot {
         String targetPath = update.getMessage().getText()
                 .substring(OtherCommandEnum.GOTO.key.length()).trim();
         FileDir fileDir = fileManager.getFileDirWithScan(targetPath);
+        if (fileDir == null) {
+            String report = "Путь не найден: " + targetPath;
+            log.error(report);
+            sendMessageWithoutKeyboard(chatId, report);
+            return;
+        }
         sendMessageWithInlineKeyboard(
                 chatId,
                 "%s: %s".formatted("Текущий путь ", fileDir.getFdPath()),
@@ -541,7 +379,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             sendMessageWithoutKeyboard(update.getMessage().getChatId(), report);
             return;
         }
-        report = sendFile(update.getMessage().getChatId(), screenPath);
+        report = "Скриншот сделан. " + sendFile(update.getMessage().getChatId(), screenPath);
         sendMessageWithoutKeyboard(update.getMessage().getChatId(), report);
     }
 
@@ -566,11 +404,21 @@ public class TelegramBot extends TelegramLongPollingBot {
         sendMessageWithoutKeyboard(update.getMessage().getChatId(), report);
     }
 
+    /**
+     * Обработчик команды /help
+     *
+     * @param update объект обновления
+     */
     private void commandHelpHandler(Update update) {
         //todo доделать этот метод
         sendMessageWithoutKeyboard(update.getMessage().getChatId(), "Инструкция пока пишется.");
     }
 
+    /**
+     * Обработчик команды /settings
+     *
+     * @param update объект обновления
+     */
     private void commandSettingsHandler(Update update) {
         String sep = System.lineSeparator();
         String report = fileManager.getUserSettings(update) +
@@ -595,8 +443,10 @@ public class TelegramBot extends TelegramLongPollingBot {
      * @param update объект обновления
      */
     private void commandResetHandler(Update update) {
-        String report = fileManager.botReset();
-//        sendMessageWithoutKeyboard(update.getMessage().getChatId(), report);
+        String report = "Перезапускаю бота, подождите 5-10 секунд...";
+        sendMessageWithoutKeyboard(update.getMessage().getChatId(), report);
+        log.info(report);
+        fileManager.botReset();
     }
 
     /**
@@ -605,9 +455,10 @@ public class TelegramBot extends TelegramLongPollingBot {
      * @param update объект обновления
      */
     private void commandExitHandler(Update update) {
-        //todo доделать этот метод
         long chatId = update.getMessage().getChatId();
-        sendMessageWithoutKeyboard(chatId, "Всё, выключаю бота на том устройстве");
+        String report = "Всё, выключаю бота на том устройстве";
+        sendMessageWithoutKeyboard(chatId, report);
+        log.info(report);
         System.exit(0);
     }
 
@@ -660,6 +511,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     /**
      * Обработчик команды OtherCommandEnum.CMD
+     *
      * @param update объект обновления
      */
     private void commandCMDHandler(Update update) {
@@ -677,9 +529,204 @@ public class TelegramBot extends TelegramLongPollingBot {
      * @param update объект обновления
      */
     private void commandOrElseHandler(Update update) {
-        //todo доделать этот метод
         long chatId = update.getMessage().getChatId();
         sendMessageWithoutKeyboard(chatId, "Мне неизвестно что делать с командой: " + update.getMessage().getText());
+    }
+
+    //endregion
+
+    //region Обработчики Callback
+
+    /**
+     * Обработчик команд Callback
+     *
+     * @param update объект обновления
+     */
+    private void handlerCallBackQuery(Update update) {
+        String callbackData = update.getCallbackQuery().getData();
+        long messageId = update.getCallbackQuery().getMessage().getMessageId();
+        long chatId = update.getCallbackQuery().getMessage().getChatId();
+
+        // если callbackData - один из пунктов словаря актуальной папки
+        if (fileManager.getCurrentPathDict().containsKey(callbackData)) {
+            FileDir targetFileDir = fileManager.getCurrentPathDict().get(callbackData);
+
+            //если нажали на Inline-кнопку МЕНЮ
+            if (targetFileDir.getFdNameInline().equals(fileManager.MENU)) {
+                sendMessageWithInlineFileDirMenu(
+                        chatId,
+                        FileManager.SELECT_MENU_ITEM,
+                        FileManager.FileDirMenu.values()
+                );
+                return;
+            }
+
+            //если нажали на кнопку на файл или папку
+            targetFileDir = fileManager.getFileDirWithScan(targetFileDir.getFdPath());
+            editMessageWithInlineKeyboard(
+                    chatId,
+                    messageId,
+                    "%s: %s".formatted("Текущий путь ", targetFileDir.getFdPath()),
+                    targetFileDir
+            );
+            return;
+        }
+
+        //если нажали на кнопку "Получить информацию"
+        if (isCallbackData(callbackData, FileManager.FileDirMenu.GET_INFO)) {
+            sendMessageWithoutKeyboard(
+                    chatId,
+                    fileManager.getFileDir().toString()
+            );
+            deleteMessageWithFileDirMenu(chatId);
+            return;
+        }
+
+        //если нажали на кнопку "Получить в телеграм"
+        if (isCallbackData(callbackData, FileManager.FileDirMenu.GET_ON_TELEGRAM)) {
+            String report;
+            if (fileManager.getFileDir().getFdType().equals(FileDir.FDType.FILE)) {
+                report = sendFile(chatId, fileManager.getFileDir().getFdPath());
+            } else {
+                report = "Это папка, для отправки в телеграм, её сначала нужно упаковать в архив.";
+                log.warn(report);
+            }
+            sendMessageWithoutKeyboard(chatId, report);
+            deleteMessageWithFileDirMenu(chatId);
+            return;
+        }
+
+        //если нажали на кнопку "Получить на почту"
+        if (isCallbackData(callbackData, FileManager.FileDirMenu.GET_ON_EMAIL)) {
+            String report = fileManager.sendEmailPersonal(
+                    fileManager.getFileDir(),
+                    update
+            );
+            sendMessageWithoutKeyboard(chatId, report);
+            deleteMessageWithFileDirMenu(chatId);
+            return;
+        }
+
+        //если нажали на кнопку "Отправить на почту"
+        if (isCallbackData(callbackData, FileManager.FileDirMenu.SEND_TO_EMAIL)) {
+            String report = fileManager.sendEmailOther(
+                    fileManager.getFileDir(),
+                    update
+            );
+            sendMessageWithoutKeyboard(chatId, report);
+            deleteMessageWithFileDirMenu(chatId);
+            return;
+        }
+
+        //если нажали на кнопку "Упаковать в zip"
+        if (isCallbackData(callbackData, FileManager.FileDirMenu.PACK)) {
+            String report = fileManager.zipFileDirWithoutPassword(
+                    fileManager.getFileDir()
+            );
+            sendMessageWithoutKeyboard(chatId, report);
+            deleteMessageWithFileDirMenu(chatId);
+            return;
+        }
+
+        //если нажали на кнопку "Упаковать в zip с паролем"
+        if (isCallbackData(callbackData, FileManager.FileDirMenu.PACK_WITH_PASSWORD)) {
+            String report = fileManager.zipFileDirWithPassword(
+                    fileManager.getFileDir(),
+                    update
+            );
+            sendMessageWithoutKeyboard(chatId, report);
+            deleteMessageWithFileDirMenu(chatId);
+            return;
+        }
+
+        //если нажали "Распаковать из zip"
+        if (isCallbackData(callbackData, FileManager.FileDirMenu.UNPACK)) {
+            String report = fileManager.unzipFileDirWithoutPassword(
+                    fileManager.getFileDir()
+            );
+            sendMessageWithoutKeyboard(chatId, report);
+            deleteMessageWithFileDirMenu(chatId);
+            return;
+        }
+
+        //если нажали "Распаковать из zip с паролем"
+        if (isCallbackData(callbackData, FileManager.FileDirMenu.UNPACK_WITH_PASSWORD)) {
+            String report = fileManager.unzipFileDirWithPassword(
+                    fileManager.getFileDir(),
+                    update
+            );
+            sendMessageWithoutKeyboard(chatId, report);
+            deleteMessageWithFileDirMenu(chatId);
+            return;
+        }
+
+        //если нажали на кнопку "Переименовать"
+        if (isCallbackData(callbackData, FileManager.FileDirMenu.RENAME)) {
+            sendMessageWithoutKeyboard(
+                    chatId,
+                    "Для переименования текущего файла/папки введите команду (без кавычек и фигурных скобок) в формате '" + OtherCommandEnum.RENAME.key + " {новое имя}'"
+            );
+            deleteMessageWithFileDirMenu(chatId);
+            return;
+        }
+
+        //если нажали кнопку "Переместить"
+        if (isCallbackData(callbackData, FileManager.FileDirMenu.MOVE)) {
+            sendMessageWithoutKeyboard(
+                    chatId,
+                    "Для перемещения текущего файла/папки введите команду (без кавычек и фигурных скобок) в формате '" + OtherCommandEnum.MOVE.key + " {новый путь к папке для перемещения}'"
+            );
+            deleteMessageWithFileDirMenu(chatId);
+            return;
+        }
+
+        //если нажали кнопку "Копировать"
+        if (isCallbackData(callbackData, FileManager.FileDirMenu.COPY)) {
+            sendMessageWithoutKeyboard(
+                    chatId,
+                    "Для копирования текущего файла/папки введите команду (без кавычек и фигурных скобок) в формате '" + OtherCommandEnum.COPY.key + " {новый путь к папке для копирования}'"
+            );
+            deleteMessageWithFileDirMenu(chatId);
+            return;
+        }
+
+        //если нажали на кнопку "Удалить"
+        if (isCallbackData(callbackData, FileManager.FileDirMenu.DELETE)) {
+            String report = fileManager.fileDirDelete(
+                    fileManager.getFileDir()
+            );
+            sendMessageWithoutKeyboard(chatId, report);
+            deleteMessageWithFileDirMenu(chatId);
+            return;
+        }
+
+        //если нажали на кнопку "Убрать меню"
+        if (isCallbackData(callbackData, FileManager.FileDirMenu.REMOVE_MENU)) {
+            deleteMessageWithFileDirMenu(chatId);
+            return;
+        }
+
+        String report = "Не могу распознать нажатую кнопку " + callbackData;
+        log.error(report + callbackData);
+        sendMessageWithoutKeyboard(chatId, report);
+    }
+
+    /**
+     * Метод для проверки нажатой кнопки на callbackData
+     * @param callbackData нажатая кнопка
+     * @param fileDirMenu меню callbackData-констант
+     * @return true если нажатая кнопка - callbackData из меню
+     */
+    private boolean isCallbackData(String callbackData, FileManager.FileDirMenu fileDirMenu) {
+        boolean result = false;
+        try {
+            result = (!callbackData.isBlank())
+            && (!fileDirMenu.getButtonCallback().isBlank())
+            && callbackData.equals(fileDirMenu.getButtonCallback());
+        } catch (Exception e) {
+            log.error("Не удалось распознать нажатую кнопку. " + System.lineSeparator() + e.getMessage());
+        }
+        return result;
     }
 
     //endregion
@@ -695,10 +742,14 @@ public class TelegramBot extends TelegramLongPollingBot {
      * @param textMessage текстовое сообщение
      */
     private void sendMessageWithoutKeyboard(long chatId, String textMessage) {
-        SendMessage message = new SendMessage();
-        message.setChatId(String.valueOf(chatId));
-        message.setText(textMessage);
-        executeMessage(message);
+        try {
+            SendMessage message = new SendMessage();
+            message.setChatId(String.valueOf(chatId));
+            message.setText(textMessage);
+            executeMessage(message);
+        } catch (Exception e) {
+            log.error("Не удалось отправить сообщение: " + e.getMessage());
+        }
     }
 
     //2. ОТПРАВКА СООБЩЕНИЯ С КЛАВИАТУРОЙ
@@ -710,14 +761,18 @@ public class TelegramBot extends TelegramLongPollingBot {
      * @param textMessage текстовое сообщение
      */
     private void sendMessageWithReplyKeyboard(long chatId, String textMessage) {
-        SendMessage message = new SendMessage();
-        message.setChatId(String.valueOf(chatId));
-        message.setText(textMessage);
+        try {
+            SendMessage message = new SendMessage();
+            message.setChatId(String.valueOf(chatId));
+            message.setText(textMessage);
 
-        ReplyKeyboardMarkup keyboardMarkup = getReplyKeyboardMarkup();
-        message.setReplyMarkup(keyboardMarkup);
+            ReplyKeyboardMarkup keyboardMarkup = getReplyKeyboardMarkup();
+            message.setReplyMarkup(keyboardMarkup);
 
-        executeMessage(message);
+            executeMessage(message);
+        } catch (Exception e) {
+            log.error("Не удалось отправить сообщение: " + e.getMessage());
+        }
     }
 
     //3. ОТПРАВКА СООБЩЕНИЯ С ИНЛАЙН-КЛАВИАТУРОЙ
@@ -730,31 +785,39 @@ public class TelegramBot extends TelegramLongPollingBot {
      * @param fileDir     элемент файловой системы, содержащий информацию для создания клавиатуры (названия кнопок, команды и т.п.)
      */
     private void sendMessageWithInlineKeyboard(long chatId, String textMessage, FileDir fileDir) {
-        SendMessage message = new SendMessage();
-        message.setChatId(String.valueOf(chatId));
-        message.setText(textMessage);
-        InlineKeyboardMarkup markupInLine = getInlineKeyboardMarkup(fileDir);
-        message.setReplyMarkup(markupInLine);
+        try {
+            SendMessage message = new SendMessage();
+            message.setChatId(String.valueOf(chatId));
+            message.setText(textMessage);
+            InlineKeyboardMarkup markupInLine = getInlineKeyboardMarkup(fileDir);
+            message.setReplyMarkup(markupInLine);
 
-        executeMessage(message);
+            executeMessage(message);
+        } catch (Exception e) {
+            log.error("Не удалось отправить сообщение: " + e.getMessage());
+        }
     }
 
     /**
      * Метод для отправки текстового сообщения с вызовом Inline-клавиатуры (на основе переданного массива из именованных констант)
-     * @param chatId Id чата получателя
-     * @param textMessage текстовое сообщение
+     *
+     * @param chatId                     Id чата получателя
+     * @param textMessage                текстовое сообщение
      * @param fileDirMenuSortedCallbacks массив из именованных констант, содержащий как Callback-команды, так и названия кнопок
      *                                   (предоставляет класс файлового менеджера)
      */
     private void sendMessageWithInlineFileDirMenu(long chatId, String textMessage, FileManager.FileDirMenu[] fileDirMenuSortedCallbacks) {
-        SendMessage message = new SendMessage();
-        message.setChatId(String.valueOf(chatId));
-        message.setText(textMessage);
-        InlineKeyboardMarkup markupInLine = getInlineKeyboardMarkup(fileDirMenuSortedCallbacks);
-        message.setReplyMarkup(markupInLine);
+        try {
+            SendMessage message = new SendMessage();
+            message.setChatId(String.valueOf(chatId));
+            message.setText(textMessage);
+            InlineKeyboardMarkup markupInLine = getInlineKeyboardMarkup(fileDirMenuSortedCallbacks);
+            message.setReplyMarkup(markupInLine);
 
-        this.fileDirMenuMessageId = executeMessage(message);
-
+            this.fileDirMessageId = executeMessage(message);
+        } catch (Exception e) {
+            log.error("Не удалось отправить сообщение: " + e.getMessage());
+        }
     }
 
     /**
@@ -777,7 +840,8 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     /**
      * Метод для отправки файла в чат
-     * @param chatId Id чата получателя
+     *
+     * @param chatId   Id чата получателя
      * @param filePath путь к отправляемому файлу
      * @return отчет о выполнении
      */
@@ -805,18 +869,19 @@ public class TelegramBot extends TelegramLongPollingBot {
      * @param textMessage текстовое сообщение для замены старого сообщения
      */
     private void editMessageWithoutKeyboard(long chatId, long messageId, String textMessage) {
-        EditMessageText message = new EditMessageText();
-        message.setChatId(String.valueOf(chatId));
-        message.setText(textMessage);
-        message.setMessageId((int) messageId);
-
         try {
+            EditMessageText message = new EditMessageText();
+            message.setChatId(String.valueOf(chatId));
+            message.setText(textMessage);
+            message.setMessageId((int) messageId);
+
             execute(message);
             log.info("Сообщение с id " + messageId + " в чате " + chatId + " изменено");
-        } catch (TelegramApiException e) {
+        } catch (Exception e) {
             log.error("Не удалось изменить сообщение с id " + messageId + " в чате: " + e.getMessage());
         }
     }
+
     //  2ая перегрузка
 
     /**
@@ -828,29 +893,29 @@ public class TelegramBot extends TelegramLongPollingBot {
      * @param fileDir     элемент файловой системы, содержащий информацию для создания клавиатуры (названия кнопок, команды и т.п.)
      */
     private void editMessageWithInlineKeyboard(long chatId, long messageId, String textMessage, FileDir fileDir) {
-        EditMessageText message = new EditMessageText();
-        message.setChatId(String.valueOf(chatId));
-        message.setText(textMessage);
-        message.setMessageId((int) messageId);
-
-        InlineKeyboardMarkup markupInLine = getInlineKeyboardMarkup(fileDir);
-        message.setReplyMarkup(markupInLine);
-
         try {
+            EditMessageText message = new EditMessageText();
+            message.setChatId(String.valueOf(chatId));
+            message.setText(textMessage);
+            message.setMessageId((int) messageId);
+
+            InlineKeyboardMarkup markupInLine = getInlineKeyboardMarkup(fileDir);
+            message.setReplyMarkup(markupInLine);
+
             execute(message);
             log.info("Сообщение с id " + messageId + " в чате " + chatId + " изменено");
-        } catch (TelegramApiException e) {
+        } catch (Exception e) {
             log.error("Не удалось изменить сообщение с id " + messageId + " в чате: " + e.getMessage());
         }
     }
 
     //6. УДАЛЕНИЕ УЖЕ ОТПРАВЛЕННОГО СООБЩЕНИЯ С IНЛАЙН-КЛАВИАТУРОЙ
     private void deleteMessageWithFileDirMenu(long chatIdLong) {
-        Integer messageId = (int) this.fileDirMenuMessageId;
-        String chatId = String.valueOf(chatIdLong);
-        DeleteMessage deleteMessage = new DeleteMessage(chatId, messageId);
-
+        Integer messageId = null;
         try {
+            messageId = (int) this.fileDirMessageId;
+            String chatId = String.valueOf(chatIdLong);
+            DeleteMessage deleteMessage = new DeleteMessage(chatId, messageId);
             execute(deleteMessage);
             log.info("Сообщение с id " + messageId + " в чате " + chatId + " удалено");
         } catch (TelegramApiException e) {
@@ -874,21 +939,26 @@ public class TelegramBot extends TelegramLongPollingBot {
      */
     private InlineKeyboardMarkup getInlineKeyboardMarkup(FileDir fileDir) {
         InlineKeyboardMarkup iKeyboard = new InlineKeyboardMarkup();
-        List<List<InlineKeyboardButton>> iRows = new ArrayList<>();
-        for (var inlineKeyboardIdsRow : fileDir.getFdInlineKeyboardIds()) {
-            List<InlineKeyboardButton> iRow = new ArrayList<>();
-            for (var inlineKeyboardId : inlineKeyboardIdsRow) {
-                InlineKeyboardButton iButton = new InlineKeyboardButton();
-                FileDir fileDirInFolder = fileManager.getCurrentPathDict().get(inlineKeyboardId);
-                iButton.setText(fileDirInFolder.getFdNameInline());
-                iButton.setCallbackData(fileDirInFolder.getFdCallbackData());
-                iRow.add(iButton);
+        try {
+            List<List<InlineKeyboardButton>> iRows = new ArrayList<>();
+            for (var inlineKeyboardIdsRow : fileDir.getFdInlineKeyboardIds()) {
+                List<InlineKeyboardButton> iRow = new ArrayList<>();
+                for (var inlineKeyboardId : inlineKeyboardIdsRow) {
+                    InlineKeyboardButton iButton = new InlineKeyboardButton();
+                    FileDir fileDirInFolder = fileManager.getCurrentPathDict().get(inlineKeyboardId);
+                    iButton.setText(fileDirInFolder.getFdNameInline());
+                    iButton.setCallbackData(fileDirInFolder.getFdCallbackData());
+                    iRow.add(iButton);
+                }
+                iRows.add(iRow);
             }
-            iRows.add(iRow);
+            iKeyboard.setKeyboard(iRows);
+        } catch (Exception e) {
+            log.error("Не удалось создать Inline-клавиатуру: " + e.getMessage());
         }
-        iKeyboard.setKeyboard(iRows);
         return iKeyboard;
     }
+
     //      2ая перегрузка - для меню элементов файловой системы
 
     /**
@@ -900,17 +970,21 @@ public class TelegramBot extends TelegramLongPollingBot {
      */
     private InlineKeyboardMarkup getInlineKeyboardMarkup(FileManager.FileDirMenu[] fileDirMenuSortedCallbacks) {
         InlineKeyboardMarkup iKeyboard = new InlineKeyboardMarkup();
-        List<List<InlineKeyboardButton>> iRows = new ArrayList<>();
+        try {
+            List<List<InlineKeyboardButton>> iRows = new ArrayList<>();
 
-        for (FileManager.FileDirMenu fileDirMenuSortedCallback : fileDirMenuSortedCallbacks) {
-            List<InlineKeyboardButton> iRow = new ArrayList<>();
-            InlineKeyboardButton iButton = new InlineKeyboardButton();
-            iButton.setText(fileDirMenuSortedCallback.getButtonText());
-            iButton.setCallbackData(fileDirMenuSortedCallback.getButtonCallback());
-            iRow.add(iButton);
-            iRows.add(iRow);
+            for (FileManager.FileDirMenu fileDirMenuSortedCallback : fileDirMenuSortedCallbacks) {
+                List<InlineKeyboardButton> iRow = new ArrayList<>();
+                InlineKeyboardButton iButton = new InlineKeyboardButton();
+                iButton.setText(fileDirMenuSortedCallback.getButtonText());
+                iButton.setCallbackData(fileDirMenuSortedCallback.getButtonCallback());
+                iRow.add(iButton);
+                iRows.add(iRow);
+            }
+            iKeyboard.setKeyboard(iRows);
+        } catch (Exception e) {
+            log.error("Не удалось создать Inline-клавиатуру: " + e.getMessage());
         }
-        iKeyboard.setKeyboard(iRows);
         return iKeyboard;
     }
 
@@ -931,17 +1005,21 @@ public class TelegramBot extends TelegramLongPollingBot {
      */
     private ReplyKeyboardMarkup getReplyKeyboardMarkup(List<List<String>> replyKeyboardNames) {
         ReplyKeyboardMarkup rKeyboard = new ReplyKeyboardMarkup();
-        List<KeyboardRow> rRows = new ArrayList<>();
-        for (var replyKeyboardNamesRow : replyKeyboardNames) {
-            KeyboardRow rRow = new KeyboardRow();
-            for (var rName : replyKeyboardNamesRow) {
-                rRow.add(rName);
+        try {
+            List<KeyboardRow> rRows = new ArrayList<>();
+            for (var replyKeyboardNamesRow : replyKeyboardNames) {
+                KeyboardRow rRow = new KeyboardRow();
+                for (var rName : replyKeyboardNamesRow) {
+                    rRow.add(rName);
+                }
+                rRows.add(rRow);
             }
-            rRows.add(rRow);
+            rKeyboard.setKeyboard(rRows);
+            //rKeyboard.setOneTimeKeyboard(true);
+            rKeyboard.setResizeKeyboard(true);
+        } catch (Exception e) {
+            log.error("Не удалось создать Reply-клавиатуру: " + e.getMessage());
         }
-        rKeyboard.setKeyboard(rRows);
-        //rKeyboard.setOneTimeKeyboard(true);
-        rKeyboard.setResizeKeyboard(true);
         return rKeyboard;
     }
 
