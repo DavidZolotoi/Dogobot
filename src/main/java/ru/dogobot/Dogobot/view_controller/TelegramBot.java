@@ -1,4 +1,4 @@
-package ru.dogobot.Dogobot.service;
+package ru.dogobot.Dogobot.view_controller;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -22,6 +22,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import ru.dogobot.Dogobot.config.BotConfig;
 import ru.dogobot.Dogobot.model.FileDir;
+import ru.dogobot.Dogobot.service.FileManager;
 
 import java.io.*;
 import java.util.*;
@@ -30,9 +31,7 @@ import java.util.*;
 @Service
 public class TelegramBot extends TelegramLongPollingBot {
 
-    //todo
-    // 1. Посмотреть модификаторы доступа
-    // 2. Ругаться если вызвали команду с исп. незаполненных данных
+    //todo Посмотреть модификаторы доступа
 
     //region КОНСТАНТЫ и другие исходные данные
     final BotConfig botConfig;
@@ -552,7 +551,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             FileDir targetFileDir = fileManager.getCurrentPathDict().get(callbackData);
 
             //если нажали на Inline-кнопку МЕНЮ
-            if (targetFileDir.getFdNameInline().equals(fileManager.MENU)) {
+            if (targetFileDir.getFdNameInline().equals(fileManager.getMENU())) {
                 sendMessageWithInlineFileDirMenu(
                         chatId,
                         FileManager.SELECT_MENU_ITEM,
@@ -910,6 +909,11 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     //6. УДАЛЕНИЕ УЖЕ ОТПРАВЛЕННОГО СООБЩЕНИЯ С IНЛАЙН-КЛАВИАТУРОЙ
+
+    /**
+     * Метод для удаления уже отправленного сообщения с добавлением Inline-клавиатуры
+     * @param chatIdLong Id чата
+     */
     private void deleteMessageWithFileDirMenu(long chatIdLong) {
         Integer messageId = null;
         try {

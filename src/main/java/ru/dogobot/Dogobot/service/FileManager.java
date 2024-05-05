@@ -24,11 +24,11 @@ import java.util.stream.Stream;
 public class FileManager {
     final String MENU = "===[ МЕНЮ ]===";                               //должно быть менее 32 символов
     final String EXIT_DIR = "[ .. ]";                                   //должно быть менее 32 символов
-    final static String SELECT_MENU_ITEM = "<< ВЫБЕРИТЕ ПУНКТ МЕНЮ >>"; //должно быть менее 32 символов
+    public final static String SELECT_MENU_ITEM = "<< ВЫБЕРИТЕ ПУНКТ МЕНЮ >>"; //должно быть менее 32 символов
 
     @Getter
     @AllArgsConstructor
-    protected enum FileDirMenu {
+    public enum FileDirMenu {
         GET_INFO("CBD_FDM_00", "Получить информацию"),
         GET_ON_TELEGRAM("CBD_FDM_01", "Получить в Telegram"),
         GET_ON_EMAIL("CBD_FDM_10", "Получить на почту"),
@@ -78,7 +78,7 @@ public class FileManager {
      * @param inputPath путь к элементу файловой системы
      * @return объект FileDir со всеми данными
      */
-    protected FileDir getFileDirWithScan(String inputPath) {
+    public FileDir getFileDirWithScan(String inputPath) {
         try {
             this.fileDir = getFileDirWithoutScan(inputPath);
             return scanFileDirAndSaveItemData(this.fileDir);
@@ -94,7 +94,7 @@ public class FileManager {
      * со сканированием содержимого и данных о содержимом.
      * @return объект FileDir со всеми данными
      */
-    protected FileDir getFileDirHomeWithScan() {
+    public FileDir getFileDirHomeWithScan() {
         try {
             this.fileDir = getFileDirWithoutScan(System.getProperty("user.home") + "/forTest"); //todo убрать forTest
             return scanFileDirAndSaveItemData(this.fileDir);
@@ -514,7 +514,7 @@ public class FileManager {
      * @param update объект обновления
      * @return строку с личными настройками
      */
-    protected String getUserSettings(Update update) {
+    public String getUserSettings(Update update) {
         String report;
         String sep = System.lineSeparator();
         try {
@@ -539,7 +539,7 @@ public class FileManager {
      *
      * @return путь к скриншоту
      */
-    protected String printScreen() {
+    public String printScreen() {
         try {
             String screenPath = getScreenshoter().take();
             log.info("Скриншот сделан. Путь: " + screenPath);
@@ -598,7 +598,7 @@ public class FileManager {
      * @param update  объект обновления
      * @return отчёт отправки
      */
-    protected String sendEmailPersonal(FileDir fileDir, Update update) {
+    public String sendEmailPersonal(FileDir fileDir, Update update) {
         String report;
         try {
             String recipient = userer.findUserById(getChatIdFromUpdate(update)).getPersonalEmail();
@@ -617,7 +617,7 @@ public class FileManager {
      * @param update  объект обновления
      * @return отчёт отправки
      */
-    protected String sendEmailOther(FileDir fileDir, Update update) {
+    public String sendEmailOther(FileDir fileDir, Update update) {
         String report;
         try {
             String recipient = userer.findUserById(getChatIdFromUpdate(update)).getOtherEmail();
@@ -866,7 +866,7 @@ public class FileManager {
      * @param script команда(ы)
      * @return отчет о выполнении
      */
-    protected String terminalExecute(String script) {
+    public String terminalExecute(String script) {
         String report;
         try {
             report = terminaler.processBuilderExecuteWithAnswer(script);
@@ -882,7 +882,7 @@ public class FileManager {
      * Отложенный запуск копии бота и завершение текущей
      * @return отчет о выполнении
      */
-    protected String botReset() {
+    public String botReset() {
         String report;
         try {
             String javaBin = System.getProperty("java.home") + File.separator + "bin" + File.separator + "java";
