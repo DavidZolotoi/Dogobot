@@ -41,9 +41,9 @@ public class FileManager {
         MOVE("CBD_FDM_31", "Переместить"),
         COPY("CBD_FDM_32", "Копировать"),
         DELETE("CBD_FDM_33", "Удалить"),
-        TERMINAL("CBD_FDM_40", "Терминал"),
+//        TERMINAL("CBD_FDM_40", "Терминал"),
         REMOVE_MENU("CBD_FDM_99", "<< УБРАТЬ МЕНЮ >>");
-        //SEND_TO_TELEGRAM( "CBD_FDM_02", "Отправить другу в Telegram");
+//        SEND_TO_TELEGRAM( "CBD_FDM_02", "Отправить другу в Telegram");
 
         private final String buttonCallback;
         private final String buttonText;

@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.*;
+import java.util.Arrays;
 
 @Slf4j
 @Service
@@ -18,6 +19,7 @@ public class Terminaler {
     public Process processBuilderExecute(String script) throws IOException {
         String[] bashOrCmdAndScript = fillCommandForOS(script);
         ProcessBuilder builderForScript = new ProcessBuilder(bashOrCmdAndScript);
+        log.info("Running command: " + Arrays.toString(bashOrCmdAndScript));
         return builderForScript.start();
     }
 
