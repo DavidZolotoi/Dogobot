@@ -667,7 +667,7 @@ public class FileManager {
                     + archiver.zipFolderWithPassword(sourceFileDir.getFdPath(), password);
             log.info(report);
         } catch (Exception e) {
-            report = "Не удалось упаковать файл или папку (метод без пароля): " + System.lineSeparator()
+            report = "Не удалось упаковать файл или папку (метод с паролем): " + System.lineSeparator()
                     + sourceFileDir.getFdPath();
             log.error(report + System.lineSeparator() + e.getMessage());
         }

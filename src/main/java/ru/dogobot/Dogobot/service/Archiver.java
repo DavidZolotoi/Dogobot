@@ -65,14 +65,14 @@ public class Archiver {
         if (!fileOrDirForAdd.exists()
                 || (!fileOrDirForAdd.isFile() && !fileOrDirForAdd.isDirectory())
         ) {
-            throw new ZipException("Файл или папка не найдены и не упакованы (метод без пароля): " + sourceForAdd);
+            throw new ZipException("Файл или папка не найдены и не упакованы (метод с паролем): " + sourceForAdd);
         }
 
         ZipParameters parameters = new ZipParameters();
         parameters.setCompressionMethod(CompressionMethod.DEFLATE);
         parameters.setCompressionLevel(CompressionLevel.NORMAL);
-        parameters.setEncryptFiles(false);
-        parameters.setEncryptionMethod(EncryptionMethod.NONE);
+        parameters.setEncryptFiles(true);
+        parameters.setEncryptionMethod(EncryptionMethod.ZIP_STANDARD);
 
         String zipFilePath = "%s_%s.zip".formatted(
                 sourceForAdd,

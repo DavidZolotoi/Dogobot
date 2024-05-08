@@ -423,16 +423,17 @@ public class TelegramBot extends TelegramLongPollingBot {
         String report = fileManager.getUserSettings(update) +
                 "---" + sep +
                 "Для изменения пароля введите команду (без кавычек и фигурных скобок)" + sep +
-                "в формате: '" + OtherCommandEnum.SETPASS.key + " {новый пароль}'." + sep +
-                "Например: " + OtherCommandEnum.SETPASS.key + " 1111" + sep +
+                "в формате: '" + OtherCommandEnum.SETPASS.key + "{новый пароль}'." + sep +
+                "Например: " + OtherCommandEnum.SETPASS.key + "1111" + sep +
                 "---" + sep +
                 "Для изменения личной почты (для получения на неё писем) введите команду (без кавычек и фигурных скобок)" + sep +
-                "в формате '" + OtherCommandEnum.SETPMAIL.key + " {новый адрес личной почты}'." + sep +
-                "Например: " + OtherCommandEnum.SETPMAIL.key + " mynew@personal.mail" + sep +
+                "в формате '" + OtherCommandEnum.SETPMAIL.key + "{новый адрес личной почты}'." + sep +
+                "Например: " + OtherCommandEnum.SETPMAIL.key + "mynew@personal.mail" + sep +
                 "---" + sep +
                 "Для изменения другой почты (для отправки на неё писем) введите команду (без кавычек и фигурных скобок)" + sep +
-                "в формате '" + OtherCommandEnum.SETOMAIL.key + " {новый адрес другой почты}'." + sep +
-                "Например: " + OtherCommandEnum.SETOMAIL.key + " mynew@other.mail" + sep;
+                "в формате '" + OtherCommandEnum.SETOMAIL.key + "{новый адрес другой почты}'." + sep +
+                "Например: " + OtherCommandEnum.SETOMAIL.key + "mynew@other.mail" + sep +
+                "Проверьте, чтоб между командой и новым значением был всего один пробел.";
         sendMessageWithoutKeyboard(update.getMessage().getChatId(), report);
     }
 
