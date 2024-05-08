@@ -96,7 +96,7 @@ public class FileManager {
      */
     public FileDir getFileDirHomeWithScan() {
         try {
-            this.fileDir = getFileDirWithoutScan(System.getProperty("user.home") + "/forTest"); //todo убрать forTest
+            this.fileDir = getFileDirWithoutScan(System.getProperty("user.home"));
             return scanFileDirAndSaveItemData(this.fileDir);
         } catch (Exception e) {
             log.error("Не открывается даже домашняя папка" + System.lineSeparator() + e.getMessage());
